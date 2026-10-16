@@ -1,2 +1,2 @@
-# league-inc-case-study
+# october-23-case-study
 League Inc. Case Study
