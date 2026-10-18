@@ -1,0 +1,18 @@
+issue_id,rule,rows_affected,effect_on_clean_view
+LD-02 / LD-18,Channel taken from campaign_name instead of channel_reported,35,Blank/Unknown rows recovered to their channel (all LinkedIn)
+LD-02,Spelling/case variants of channel_reported normalised via campaign_name,378,No count change; labels unified
+LD-03,Missing UTMs flagged; not used for attribution,60,None (campaign_name used instead)
+LD-01,Stage derived from date fields; 10 label spellings mapped to 5 stages for comparison,372,Labels disagreeing with dates after mapping: 0
+LD-05,Wins with no sql_date/sqo_date counted as reached SQL and SQO,3,+3 SQL and +3 SQO versus counting dates only
+LD-04,"Duplicates by contact_email: keep most advanced record, ties to lowest lead_id",36,36 rows excluded; 0 of them had reached SQL; 4 pairs span two campaigns (flagged)
+LD-10,"is_icp_size = 1,000+ employees",307,None by default; available as a filter
+LD-11,Government kept as Buyer; Broker / Consultant tagged Influencer,145,None by default; available as a filter
+LD-06,SQL date before MQL date flagged,4,None
+LD-07,MQL date after 30 Jun 2026 extract flagged,2,None
+LD-08,Created before FY26 flagged (kept: they MQL'd in the extract),22,None
+LD-09,SQL or later with no owner flagged,35,None
+LD-13,Demandbase leads not flagged Tier 1,4,None
+LD-15,mql_half and mql_quarter added for cohort reading,0,None; enables mature-cohort view
+SP-01,Second Content Syndication 2025-11 row excluded,1,"-$8,125 Syndication spend"
+SP-02,"Blank Events 2026-03 spend kept blank, not filled",1,"Events spend understated; shown as a sensitivity range, not a single figure"
+LD-19,Period totals computed for baseline check,0,None; $280K treated as a fixed budget
