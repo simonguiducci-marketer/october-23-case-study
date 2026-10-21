@@ -1,0 +1,1336 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>League FY26 Funnel</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: operator console. Header + one control rail, tabs, then summary tiles -> the decision chart -> full table -> caveats. */
+:root {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --ink: #141b24;
+  --ink-2: #4a5462;
+  --ink-3: #737d8a;
+  --line: #dde1e7;
+  --line-2: #eceff3;
+  --accent: #2a5bd7;
+  --accent-soft: #e6ecfb;
+  --series: #2a78d6;
+  --series-dim: #9ab9e6;
+  --ref: #141b24;
+  --warn: #9a5b00;
+  --warn-soft: #fbf1df;
+  --good: #1d7a4a;
+  --font-ui: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11151b; --surface: #181e26; --ink: #e9edf2; --ink-2: #b4bcc7; --ink-3: #8a94a1;
+    --line: #2b333e; --line-2: #222932; --accent: #7fa2f2; --accent-soft: #1f2c47;
+    --series: #3987e5; --series-dim: #2c5180; --ref: #e9edf2; --warn: #e3a64a; --warn-soft: #2e2516; --good: #57c08a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11151b; --surface: #181e26; --ink: #e9edf2; --ink-2: #b4bcc7; --ink-3: #8a94a1;
+  --line: #2b333e; --line-2: #222932; --accent: #7fa2f2; --accent-soft: #1f2c47;
+  --series: #3987e5; --series-dim: #2c5180; --ref: #e9edf2; --warn: #e3a64a; --warn-soft: #2e2516; --good: #57c08a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 14px; line-height: 1.5; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 28px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 22px; }
+header { display: grid; gap: 6px; }
+.eyebrow { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+h1 { font-size: 26px; line-height: 1.15; margin: 0; font-weight: 700; letter-spacing: -.01em; text-wrap: balance; }
+.sub { color: var(--ink-2); margin: 0; max-width: 72ch; }
+.syn { display: inline-block; font-size: 11px; font-weight: 600; color: var(--warn); background: var(--warn-soft); border-radius: 4px; padding: 1px 7px; margin-left: 6px; vertical-align: 2px; }
+
+.rail { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: end; padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.ctl { display: grid; gap: 5px; min-width: 0; }
+.ctl label, .ctl .lbl { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; flex-wrap: wrap; }
+.seg button { font: inherit; font-size: 13px; padding: 6px 12px; border: 0; background: var(--surface); color: var(--ink-2); cursor: pointer; border-right: 1px solid var(--line); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--surface); font-weight: 600; }
+.seg button:focus-visible, .tabs button:focus-visible, th button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.rail.off { opacity: .45; filter: grayscale(1); }
+.rail.off button { cursor: not-allowed; }
+.rail .hint { font-size: 12px; color: var(--ink-3); flex: 1 1 260px; min-width: 0; }
+
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tabs button { font: inherit; font-weight: 600; font-size: 14px; color: var(--ink-3); background: none; border: 0; padding: 10px 14px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tabs .soon { font-size: 10px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); margin-left: 6px; }
+
+.panel { display: grid; gap: 22px; }
+.tiles { display: grid; gap: 14px; }
+.tgroup { display: grid; gap: 6px; }
+.tgroup .gl { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+.tgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.tile .k .chip { letter-spacing: 0; text-transform: none; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; display: grid; gap: 2px; align-content: start; }
+.tile .k { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+.tile .v { font-family: var(--font-num); font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.tile .alt { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.tile .alt b { font-weight: 600; color: var(--ink-2); }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px; display: grid; gap: 14px; min-width: 0; }
+.card h2 { font-size: 16px; margin: 0; font-weight: 600; text-wrap: balance; }
+.card .lede { margin: 0; color: var(--ink-2); max-width: 80ch; }
+
+.findings { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.fgroup { display: grid; gap: 8px; }
+.fgroup .gl { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+.finding { border-top: 2px solid var(--line); padding-top: 10px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.finding .t { font-weight: 600; }
+.finding p { margin: 0; color: var(--ink-3); font-size: 12.5px; }
+.finding .so { margin-top: auto; background: var(--accent-soft); border-radius: 6px; padding: 10px 12px; color: var(--ink); font-size: 13.5px; font-weight: 500; line-height: 1.45; }
+.finding .so::before { content: "Action"; display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 3px; }
+
+.dual { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+@media (max-width: 760px) { .dual { grid-template-columns: 1fr; } }
+.bars { display: grid; gap: 10px; position: relative; min-width: 0; --namew: 130px; }
+@media (max-width: 480px) { .bars { --namew: 104px; } .brow .name { font-size: 12px; } }
+.bars h3 { font-size: 13px; margin: 0 0 2px; font-weight: 600; }
+.bars h3 span { color: var(--ink-3); font-weight: 400; }
+.brow { display: grid; grid-template-columns: var(--namew) minmax(0, 1fr); gap: 10px; align-items: center; }
+.brow .name { font-size: 13px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.track { position: relative; height: 22px; }
+.bar { position: absolute; left: 0; top: 4px; height: 14px; background: var(--series); border-radius: 0 4px 4px 0; cursor: default; }
+.bar.dim { background: var(--series-dim); }
+.bar:hover, .bar:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.bval { position: absolute; top: 2px; font-family: var(--font-num); font-size: 12px; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.refline { position: absolute; top: 22px; bottom: 0; width: 0; border-left: 1.5px dashed var(--ref); opacity: .55; pointer-events: none; }
+.reflbl { position: absolute; bottom: -18px; font-size: 11px; color: var(--ink-3); transform: translateX(-50%); white-space: nowrap; }
+.none { font-size: 12px; color: var(--ink-3); font-style: italic; position: absolute; top: 2px; }
+.axisnote { font-size: 12px; color: var(--ink-3); margin-top: 14px; }
+
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; min-width: 980px; background: var(--surface); font-size: 13px; }
+th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--line-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+th:first-child, td:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); }
+thead th { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+th button { font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: inherit; }
+th button[data-active="true"] { color: var(--accent); }
+td.num { font-family: var(--font-num); font-size: 12.5px; }
+td.key { font-weight: 600; color: var(--ink); }
+tbody tr:hover td { background: var(--line-2); }
+tfoot td { font-weight: 600; border-top: 1px solid var(--line); border-bottom: 0; }
+.muted { color: var(--ink-3); }
+.chip { display: inline-block; font-family: var(--font-ui); font-size: 10px; font-weight: 600; letter-spacing: .03em; color: var(--warn); background: var(--warn-soft); border-radius: 3px; padding: 0 5px; margin-left: 5px; vertical-align: 1px; }
+.cell-sub { display: block; font-size: 11px; color: var(--ink-3); }
+
+.notes { display: grid; gap: 6px; margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 13px; }
+.notes li { max-width: 95ch; }
+.callout { background: var(--accent-soft); border-radius: 8px; padding: 14px 16px; color: var(--ink); max-width: 80ch; }
+
+.flowwrap { overflow-x: auto; }
+.flow { display: grid; gap: 0; min-width: 560px; width: 100%; }
+.frow { display: grid; grid-template-columns: 136px repeat(3, minmax(44px, 1fr) minmax(56px, 64px)) minmax(44px, 1fr); align-items: center; gap: 0; padding: 4px 0; border-bottom: 1px solid var(--line-2); }
+.frow.head { border-bottom: 1px solid var(--line); padding: 0 0 4px; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+.frow.total { background: var(--line-2); border-radius: 6px; border-bottom: 0; padding-left: 8px; }
+.frow .fname { font-weight: 500; font-size: 12.5px; padding-right: 8px; }
+.st { font-family: var(--font-num); font-size: 13px; font-variant-numeric: tabular-nums; text-align: center; }
+.cv { text-align: center; font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; position: relative; }
+.cv span { display: inline-block; border-radius: 999px; padding: 1px 6px; }
+.cv .up { background: color-mix(in srgb, var(--good) 14%, transparent); color: var(--good); }
+.cv .down { background: var(--warn-soft); color: var(--warn); }
+.cv .flat { background: var(--surface); color: var(--ink-2); border: 1px solid var(--line); }
+.cv .thin { opacity: .55; }
+.cv::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px dashed var(--line); z-index: -1; }
+.cv { z-index: 0; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--ink-3); }
+.legend span span { margin-right: 4px; }
+.reasons { display: grid; gap: 8px; }
+.rrow { display: grid; grid-template-columns: minmax(0, 190px) minmax(0, 1fr) 28px; gap: 10px; align-items: center; font-size: 13px; }
+.rrow .rbar { height: 14px; background: var(--series); border-radius: 0 4px 4px 0; }
+.rrow .rn { font-family: var(--font-num); text-align: right; }
+.wl { width: 100%; min-width: 0; border-collapse: collapse; font-size: 13px; }
+.wl th, .wl td { padding: 6px 8px; border-bottom: 1px solid var(--line-2); text-align: right; white-space: nowrap; }
+.wl th:first-child, .wl td:first-child { text-align: left; position: static; }
+.wl thead th { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-3); }
+.wl td.zero { color: var(--warn); font-weight: 600; }
+.lostgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 22px; }
+.card { align-content: start; }
+.lostgrid h3 { font-size: 13px; margin: 0 0 8px; font-weight: 600; }
+details summary { cursor: pointer; font-weight: 600; font-size: 13px; color: var(--accent); }
+details[open] summary { margin-bottom: 8px; }
+.timeline { display: flex; gap: 2px; width: 100%; min-width: 0; }
+.tseg { display: grid; gap: 4px; min-width: 0; }
+.tseg .tb { height: 14px; background: var(--series); }
+.tseg:first-child .tb { border-radius: 4px 0 0 4px; }
+.tseg:last-child .tb { border-radius: 0 4px 4px 0; }
+.tseg .tl { font-size: 11.5px; color: var(--ink-2); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; }
+.tseg .tl b { font-family: var(--font-num); color: var(--ink); font-weight: 500; }
+.rate { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; }
+.rate i { display: inline-block; height: 8px; background: var(--series); border-radius: 0 3px 3px 0; }
+.wl.prof td:nth-child(1) { white-space: normal; min-width: 150px; }
+.rangegrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+.rangebox { display: grid; gap: 8px; padding: 14px; border: 1px solid var(--line); border-radius: 8px; min-width: 0; }
+.rb-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.rb-l { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+.rb-v { font-family: var(--font-num); font-size: 26px; font-variant-numeric: tabular-nums; }
+.rb-b { font-size: 12px; color: var(--ink-3); }
+.rb-track { position: relative; height: 26px; background: var(--line-2); border-radius: 4px; margin-top: 14px; }
+.rb-band { position: absolute; top: 6px; height: 14px; background: var(--series-dim); border-radius: 4px; }
+.rb-base { position: absolute; top: 2px; width: 3px; height: 22px; background: var(--series); border-radius: 2px; transform: translateX(-1.5px); }
+.rb-target { position: absolute; top: -14px; bottom: 0; border-left: 2px dashed var(--ink); }
+.rb-target span { position: absolute; top: -2px; left: 4px; font-size: 10.5px; color: var(--ink-2); white-space: nowrap; }
+.rb-scale { display: flex; justify-content: space-between; font-size: 11px; color: var(--ink-3); font-family: var(--font-num); }
+.brail { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: end; }
+.brail input[type=range], .scen input[type=range] { width: 100%; accent-color: var(--accent); }
+.scen { flex-wrap: wrap; }
+.scen .penctl { flex: 3 1 340px; }
+.scen .evctl { margin-left: auto; align-self: center; }
+.scen .evctl .chk, .ctl .chk { white-space: nowrap; text-transform: none; letter-spacing: 0; font-size: 12.5px; font-weight: 500; color: var(--ink-2); }
+.scen #pen { -webkit-appearance: none; appearance: none; height: 28px; background: transparent; cursor: pointer; }
+.scen #pen::-webkit-slider-runnable-track { height: 10px; border-radius: 999px; background: linear-gradient(to right, var(--accent) 0 var(--fill, 33%), var(--line) var(--fill, 33%) 100%); }
+.scen #pen::-moz-range-track { height: 10px; border-radius: 999px; background: var(--line); }
+.scen #pen::-moz-range-progress { height: 10px; border-radius: 999px; background: var(--accent); }
+.scen #pen::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: var(--surface); border: 3px solid var(--accent); margin-top: -6px; }
+.scen #pen::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--surface); border: 3px solid var(--accent); }
+.scen #pen:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.hint2 { font-size: 11.5px; color: var(--ink-3); }
+.chk { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--ink-2); text-transform: none; letter-spacing: 0; font-weight: 400; }
+table.alloc { min-width: 860px; }
+table.alloc td { vertical-align: middle; }
+.sp { display: grid; grid-template-columns: 96px minmax(90px, 1fr); gap: 8px; align-items: center; min-width: 210px; }
+.sp input[type=range] { accent-color: var(--accent); width: 100%; }
+.alloc input[type=number], .synrow input[type=number] { width: 96px; font: inherit; font-family: var(--font-num); font-size: 13px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--ink); text-align: right; }
+.alloc input[type=number]:focus-visible, .synrow input:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.call { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .03em; border-radius: 999px; padding: 1px 8px; }
+.call.stop { background: var(--warn-soft); color: var(--warn); }
+.call.cut { background: var(--warn-soft); color: var(--warn); }
+.call.grow { background: color-mix(in srgb, var(--good) 14%, transparent); color: var(--good); }
+.call.hold { background: var(--line-2); color: var(--ink-2); }
+td.pos { color: var(--good); } td.neg { color: var(--warn); }
+.over { color: var(--warn); }
+.capnote { margin: 0; font-size: 12.5px; color: var(--warn); background: var(--warn-soft); border-radius: 6px; padding: 6px 10px; justify-self: start; }
+.synrow { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; font-size: 13px; color: var(--ink-2); }
+.synrow .lbl { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+.synrow label { display: inline-flex; gap: 6px; align-items: center; }
+.btn { font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; justify-self: start; }
+details.card > summary { font-size: 16px; color: var(--ink); }
+.brief { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0 24px; }
+.brief li { display: grid; gap: 1px; padding: 8px 0 8px 14px; border-bottom: 1px solid var(--line-2); position: relative; }
+.brief li::before { content: ""; position: absolute; left: 0; top: 15px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.brief li span { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+.brief li b { font-weight: 500; font-size: 14px; }
+.tldet > summary { list-style: none; cursor: pointer; display: inline-block; }
+.tldet > summary::-webkit-details-marker { display: none; }
+.tl-btn { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--accent); border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; background: var(--surface); }
+.tl-btn::before { content: "▸"; transition: transform .15s; }
+.tldet[open] .tl-btn::before { transform: rotate(90deg); }
+.tldet .hide, .tldet[open] .show { display: none; }
+.tldet[open] .hide { display: inline; }
+.tldet > summary:focus-visible .tl-btn { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tldet[open] > summary { margin-bottom: 12px; }
+.tl-h { font-size: 13px; margin: 6px 0 0; font-weight: 600; }
+.tlwrap { overflow-x: auto; }
+.tl { display: grid; grid-template-columns: repeat(12, minmax(56px, 1fr)); gap: 6px 4px; min-width: 700px; }
+.tl-band { font-size: 11px; font-weight: 600; letter-spacing: .03em; padding: 6px 10px; border-radius: 6px; }
+.tl-band.h1 { background: var(--accent); color: var(--surface); }
+.tl-band.h2 { background: var(--line-2); color: var(--ink-2); }
+.tl-m { font-family: var(--font-num); font-size: 11px; color: var(--ink-2); border-left: 1px solid var(--line); padding: 2px 0 2px 6px; }
+.tl-m.dim { color: var(--ink-3); }
+.tl-e { font-size: 12px; color: var(--ink-2); background: var(--accent-soft); border-radius: 6px; padding: 6px 8px; line-height: 1.35; }
+.tl-e b { display: block; color: var(--ink); font-size: 11.5px; }
+.tl-e.warn { background: var(--warn-soft); }
+.tl-e.dim { background: var(--line-2); }
+p, li, .so, .finding .t, .tl-e, .callout, .alt, .cell-sub, .hint2, td { text-wrap: pretty; }
+h1, h2, h3 { text-wrap: balance; }
+.findings.three { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+@media (min-width: 900px) { .findings.three { grid-template-columns: repeat(3, 1fr); } }
+.capnotes { display: grid; gap: 6px; }
+.capnotes .lbl { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+.two { margin: 0; padding-left: 22px; display: grid; gap: 10px; max-width: 95ch; }
+.two li { padding-left: 4px; color: var(--ink-2); }
+.two li b { color: var(--ink); }
+.verdicts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.verdict { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; display: grid; gap: 8px; align-content: start; }
+.verdict .k { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+.verdict .vv { font-family: var(--font-num); font-size: 30px; font-variant-numeric: tabular-nums; }
+.verdict .vv span { font-family: var(--font-ui); font-size: 13px; color: var(--ink-3); margin-left: 6px; }
+.verdict p { margin: 0; color: var(--ink-2); font-size: 13px; }
+.verdict .cv span { font-size: 12px; padding: 2px 10px; }
+table.rplan { min-width: 860px; }
+table.rplan td:first-child { white-space: normal; min-width: 260px; }
+table.rtext td, table.rtext th { white-space: normal; text-align: left; vertical-align: top; }
+table.rtext td:first-child { min-width: 200px; }
+tr.rec-row td { background: var(--accent-soft); }
+#tip { position: fixed; z-index: 20; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 12px; padding: 7px 9px; border-radius: 6px; max-width: 260px; line-height: 1.4; box-shadow: 0 4px 14px rgba(0,0,0,.18); }
+#tip b { font-weight: 600; }
+
+.logtable td, .logtable th { white-space: normal; text-align: left; vertical-align: top; }
+.logtable { min-width: 760px; }
+.logtable td:nth-child(3) { text-align: right; font-family: var(--font-num); }
+.logtable th:nth-child(3) { text-align: right; }
+.pill { display: inline-block; font-size: 11px; font-weight: 600; border-radius: 999px; padding: 1px 8px; }
+.pill.changes { background: var(--accent-soft); color: var(--accent); }
+.pill.flag { background: var(--line-2); color: var(--ink-2); }
+
+.placeholder { border: 1px dashed var(--line); border-radius: 8px; padding: 28px; color: var(--ink-2); display: grid; gap: 8px; max-width: 80ch; }
+.placeholder h2 { margin: 0; font-size: 16px; color: var(--ink); }
+.placeholder p { margin: 0; }
+@media (prefers-reduced-motion: no-preference) { .bar { transition: width .25s ease; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">League · Interview stage 4 · Case study · FY26 paid media (1 Jul 2025 – 30 Jun 2026)</div>
+    <h1>FY26 funnel review and H1 FY27 media plan <span class="syn">Synthetic data</span></h1>
+    <p class="sub">Switch between the extract as delivered and the cleaned data to see what each fix changes; every cleaning rule is in the Data log tab.</p>
+  </header>
+
+  <section class="rail" aria-label="View controls">
+    <div class="ctl"><span class="lbl" id="l-view">Data</span>
+      <div class="seg" role="group" aria-labelledby="l-view" data-key="view">
+        <button id="v-raw" data-val="raw" aria-pressed="false">As delivered</button>
+        <button id="v-clean" data-val="clean" aria-pressed="true">Cleaned</button>
+      </div></div>
+    <div class="ctl"><span class="lbl" id="l-icp">Company size</span>
+      <div class="seg" role="group" aria-labelledby="l-icp" data-key="icp">
+        <button id="i-all" data-val="all" aria-pressed="true">All</button>
+        <button id="i-icp" data-val="icp" aria-pressed="false">ICP (1,000+)</button>
+      </div></div>
+    <div class="ctl"><span class="lbl" id="l-seg">Segment</span>
+      <div class="seg" role="group" aria-labelledby="l-seg" data-key="seg">
+        <button id="s-all" data-val="all" aria-pressed="true">All</button>
+        <button id="s-buy" data-val="buyers" aria-pressed="false">Buyers only</button>
+      </div></div>
+    <div class="ctl"><span class="lbl" id="l-coh">MQL cohort</span>
+      <div class="seg" role="group" aria-labelledby="l-coh" data-key="cohort">
+        <button id="c-all" data-val="all" aria-pressed="true">FY26 full year</button>
+        <button id="c-h1" data-val="h1" aria-pressed="false">H1 FY26 (Jul–Dec 2025)</button>
+        <button id="c-h2" data-val="h2" aria-pressed="false">H2 FY26 (Jan–Jun 2026)</button>
+      </div></div>
+    <p class="hint" id="hint"></p>
+  </section>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" id="t-rec" aria-selected="true" aria-controls="p-rec">Recommendation</button>
+    <button role="tab" id="t-funnel" aria-selected="false" aria-controls="p-funnel">Funnel</button>
+    <button role="tab" id="t-profile" aria-selected="false" aria-controls="p-profile">Lead profile</button>
+    <button role="tab" id="t-abm" aria-selected="false" aria-controls="p-abm">ABM</button>
+    <button role="tab" id="t-deals" aria-selected="false" aria-controls="p-deals">Closed deals</button>
+    <button role="tab" id="t-budget" aria-selected="false" aria-controls="p-budget">Budget allocator</button>
+    <button role="tab" id="t-build" aria-selected="false" aria-controls="p-build">Build log</button>
+    <button role="tab" id="t-log" aria-selected="false" aria-controls="p-log">Data log</button>
+  </nav>
+
+  <section class="panel" id="p-rec" role="tabpanel" aria-labelledby="t-rec" hidden>
+    <div class="card">
+      <h2>The recommendation in two minutes</h2>
+      <ol class="two" id="rec-two"></ol>
+    </div>
+    <div class="verdicts" id="rec-verdicts"></div>
+
+    <div class="card">
+      <h2>The H1 FY27 plan</h2>
+      <p class="lede">Balanced plan, Syndication Option A, 25% diminishing returns as the base case. Test other mixes in the Budget allocator tab.</p>
+      <div class="tablewrap"><table class="wl rplan" id="rec-plan"></table></div>
+      <p class="callout" id="rec-bridge" style="margin:0"></p>
+      <div class="capnotes"><div class="lbl">Channel caps</div>
+      <ul class="notes">
+        <li>Caps are per half-year (data package README), so the plan uses them as stated rather than doubling.</li>
+        <li><b>Webinars:</b> at most 3 a month at about $3K each, so $54K a half (about $108K a year).</li>
+        <li><b>Demandbase:</b> about $40K a half across the 1,200 Tier 1 accounts (about $80K a year).</li>
+        <li>FY26 ran below both caps, at about $36K and $32.5K a half.</li>
+        <li>The README treats the Demandbase limit as soft (past it you buy frequency, not reach). The plan holds it as a hard cap because spend beyond it reaches no new accounts.</li>
+      </ul></div>
+    </div>
+
+    <div class="card">
+      <h2>What has to be true</h2>
+      <div class="findings three">
+        <div class="finding"><div class="t">LinkedIn tracking is fixed before it scales</div>
+          <p>35 LinkedIn leads lost their UTMs during the Feb–Apr landing page migration. LinkedIn takes the largest share of the plan, so its results must be measurable from July.</p></div>
+        <div class="finding"><div class="t">MQLs are gated on company size</div>
+          <p>Leads at 1,000+ employees convert to SQL at 20%, smaller ones at 6%. Add the gate to Pardot scoring and paid targeting.</p></div>
+        <div class="finding"><div class="t">Sales follows up every SQL</div>
+          <p>35 of 105 FY26 SQLs had no owner. Agree routing and a follow-up SLA, and report owner coverage weekly.</p></div>
+        <div class="finding"><div class="t">Webinars run three a month</div>
+          <p>The plan funds Webinars to their cap. FY26 ran about two a month, so this is a production commitment, not just a budget line.</p></div>
+        <div class="finding"><div class="t">HLTH 2026 earns its $45K</div>
+          <p>Attach executive roundtables, which closed 3 of the 4 Events wins. HLTH is mid-November, so its leads must reach SQL by early December to count in H1.</p></div>
+        <div class="finding"><div class="t">Programs are front-loaded</div>
+          <p>MQL to SQL takes about 3 weeks and MQL to won about 5.5 months. Spend weighted to July–October counts in H1; revenue lands in H2 FY27.</p></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Alternatives considered</h2>
+      <p class="lede">Same $280K, same assumptions. SQL range runs from 50% diminishing returns to none.</p>
+      <div class="tablewrap"><table class="wl" id="rec-alt" style="min-width:680px"></table></div>
+    </div>
+
+    <div class="card">
+      <h2>Risks I'd watch monthly</h2>
+      <div class="tablewrap"><table class="wl rtext" style="min-width:720px">
+        <thead><tr><th>Risk</th><th>Early signal</th><th>Response</th></tr></thead>
+        <tbody>
+          <tr><td>LinkedIn doesn't scale (the swing between 52 and 56 SQLs)</td><td>LinkedIn cost per SQL above about $7K by the end of August</td><td>Hold LinkedIn at its FY26 level, move the difference to Syndication Option B if agreed, and tell leadership early that we are tracking the low end</td></tr>
+          <tr><td>Webinar cadence slips</td><td>Fewer than 3 webinars booked per month by the end of July</td><td>Move unspent webinar budget to LinkedIn each month</td></tr>
+          <tr><td>Syndication vendor won't renegotiate</td><td>No agreement by mid-August</td><td>Cancel as planned (Option A is already the base case)</td></tr>
+          <tr><td>HLTH leads land too late for H1</td><td>HLTH leads not at SQL by early December</td><td>Count them in H2 FY27 and set that expectation now</td></tr>
+          <tr><td>The MQL target rewards volume</td><td>ICP share of MQLs below about two-thirds</td><td>Report ICP MQLs beside total MQLs; propose an ICP MQL target for H2 FY27</td></tr>
+        </tbody></table></div>
+    </div>
+  </section>
+
+  <section class="panel" id="p-funnel" role="tabpanel" aria-labelledby="t-funnel" hidden>
+    <div class="tiles" id="tiles"></div>
+
+    <div class="card">
+      <h2>The cheapest lead is the most expensive SQL</h2>
+      <p class="lede">Channels ranked by cost per SQL. Read left to right: the ranking by cost per MQL nearly reverses once you ask what each channel costs per sales-accepted lead.</p>
+      <div class="dual">
+        <div class="bars" id="bars-mql"></div>
+        <div class="bars" id="bars-sql"></div>
+      </div>
+      <div class="axisnote" id="axisnote"></div>
+    </div>
+
+    <div class="card">
+      <h2>Funnel at a glance</h2>
+      <p class="lede">Leads at each stage by channel, with the conversion rate between stages.</p>
+      <div class="legend"><span><span class="cv"><span class="up">▲</span></span>above the all-channel rate</span><span><span class="cv"><span class="down">▼</span></span>below it</span><span>Faded rates rest on fewer than 10 records.</span></div>
+      <div class="flowwrap"><div class="flow" id="flow"></div></div>
+    </div>
+
+    <div class="card">
+      <h2>Funnel by channel</h2>
+      <p class="lede">MQL → SQL → SQO → Closed Won. Click a column header to sort. A <span class="chip">low n</span> flag marks rates and costs built on fewer than 10 records.</p>
+      <div class="tablewrap"><table id="ftable" aria-label="Funnel by channel"></table></div>
+      <ul class="notes" id="notes"></ul>
+    </div>
+
+    <div class="card">
+      <h2>What this means for H1 FY27 spend</h2>
+      <div class="fgroup"><div class="gl">Channels</div>
+      <div class="findings">
+        <div class="finding"><div class="t">Google Demand Gen buys volume, not pipeline</div>
+          <p id="f1"></p><div class="so">Cut Google Demand Gen from $27.5K to about $20K a half and keep it as a deliberate MQL-volume line, reported separately from ICP MQLs. Everything else moves to channels that convert.</div></div>
+        <div class="finding"><div class="t">The most efficient channels are capped</div>
+          <p id="f2"></p><div class="so">Fund Webinars to the 3-a-month cap (about $54K) and Demandbase to about $40K before anything else. That is roughly $94K placed at well under the blended cost per SQL.</div></div>
+        <div class="finding"><div class="t">LinkedIn was under-credited</div>
+          <p id="f3"></p><div class="so">Fix UTM pass-through on the new landing page template first, then make LinkedIn the main channel for scaling SQLs, judged on the cleaned data.</div></div>
+        <div class="finding"><div class="t">Syndication under-delivers its guarantee</div>
+          <p id="f4"></p><div class="so">Complete the contract through July and cancel at the August renewal, unless the vendor accepts new terms: credit for the 46-lead shortfall, a 1,000+ employee filter and de-duplication.</div></div>
+      </div></div>
+      <div class="fgroup"><div class="gl">Lead quality, targets and follow-up</div>
+      <div class="findings">
+        <div class="finding"><div class="t">The targets only fit if lead quality rises</div>
+          <p id="f5"></p><div class="so">Plan for 300 MQLs and 52–56 SQLs, and show leadership the price: keeping about $20K in Google Demand Gen reaches 300 MQLs for less than one SQL. Report ICP MQLs alongside; about 275 of them would deliver 55 SQLs.</div></div>
+        <div class="finding"><div class="t">Company size is the strongest quality signal</div>
+          <p id="f6"></p><div class="so">Add a 1,000+ employee gate to Pardot scoring and to paid targeting, so leads under 1,000 stop counting as MQLs.</div></div>
+        <div class="finding"><div class="t">Roundtables, not the big show, closed the Events deals</div>
+          <p>Executive roundtables: 17 leads, 8 SQLs, 3 wins worth $2.76M. HLTH 2025: 15 leads, 6 SQLs, no wins yet. Events spend is not split by campaign, so neither can be costed on its own.</p><div class="so">Attach executive roundtables to HLTH 2026, so the committed $45K produces buyer meetings, not only badge scans.</div></div>
+        <div class="finding"><div class="t">A third of SQLs have no owner</div>
+          <p>35 of the 105 leads that reached SQL or later show "Unassigned" in Salesforce (LD-09). Either routing broke or ownership was never recorded.</p><div class="so">Agree lead routing and a follow-up SLA with Sales, and report the share of SQLs with an owner every week, before buying more SQLs.</div></div>
+      </div></div>
+      <p class="muted" style="margin:0;font-size:12px">Findings use the cleaned data, all leads, full year.</p>
+    </div>
+
+
+  </section>
+
+  <section class="panel" id="p-abm" role="tabpanel" aria-labelledby="t-abm" hidden>
+    <p class="sub" style="margin:0" id="abmhint"></p>
+    <div class="card">
+      <h2>ABM target accounts (Tier 1)</h2>
+      <p class="lede">Leads flagged as belonging to the 1,200-account Demandbase Tier 1 list, compared with everyone else. Each company in the extract has exactly one lead, so accounts reached equals Tier 1 leads.</p>
+      <div class="tiles"><div class="tgrid" id="abmtiles"></div></div>
+      <div class="lostgrid">
+        <div><h3>Tier 1 vs other leads, by channel</h3><div class="tablewrap"><table class="wl" id="abmch" style="min-width:520px"></table></div></div>
+        <div><h3>Tier 1 leads by company size</h3><div class="tablewrap"><table class="wl" id="abmsize" style="min-width:360px"></table></div></div>
+      </div>
+      <div class="fgroup"><div class="gl">What this means for H1 FY27</div>
+      <div class="findings">
+        <div class="finding"><div class="t">The Tier 1 flag can't be trusted as it stands</div>
+          <p>148 of the 376 Tier 1 leads (39%) are at companies under 1,000 employees, below League's ICP, and 4 Demandbase leads are flagged "No" (LD-13). An enterprise target list shouldn't look like this.</p>
+          <div class="so">Rebuild the flag by matching lead domains to the Demandbase account list before using it to judge ABM.</div></div>
+        <div class="finding"><div class="t">As flagged, Tier 1 barely outperforms</div>
+          <p>Tier 1 leads convert to SQL at 16% against 13% for the rest, with 9 wins against 7 and almost the same ACV per win (about $730K).</p>
+          <div class="so">Re-tier accounts on fit (size, segment) and intent, so the tier predicts something Sales can act on.</div></div>
+        <div class="finding"><div class="t">The channel matters more than the flag</div>
+          <p>Tier 1 leads from Events convert at 39% and from Demandbase at 32%. Tier 1 leads bought through Syndication convert at 5% and through Google Demand Gen at 3%.</p>
+          <div class="so">Reach Tier 1 accounts through Events, roundtables, Demandbase and LinkedIn, not through Syndication or Google Demand Gen.</div></div>
+        <div class="finding"><div class="t">One contact per account is not ABM</div>
+          <p>376 of the 1,200 Tier 1 accounts (31%) produced a lead, and every one produced exactly one. Enterprise deals here involve several decision-makers.</p>
+          <div class="so">Measure ABM on accounts engaged and contacts per account, and use Demandbase to widen buying-committee coverage, not lead count.</div></div>
+      </div></div>
+      <p class="muted" style="margin:0;font-size:12px">Findings use the cleaned data, all leads, full year.</p>
+    </div>
+  </section>
+
+  <section class="panel" id="p-deals" role="tabpanel" aria-labelledby="t-deals" hidden>
+    <div class="card">
+      <h2>Why deals were lost</h2>
+      <p class="lede" id="lostlede"></p>
+      <div class="tiles"><div class="tgrid" id="losttiles"></div></div>
+      <div class="lostgrid">
+        <div><h3>Loss reasons (10 deals)</h3><div class="reasons" id="reasons"></div></div>
+        <div><h3>Closed deals by company size</h3><table class="wl" id="bysize"></table></div>
+        <div><h3>Closed deals by segment</h3><table class="wl" id="byseg"></table></div>
+      </div>
+      <div class="fgroup"><div class="gl">What this means for H1 FY27</div>
+      <div class="findings">
+        <div class="finding"><div class="t">Deals are lost on qualification, not to competitors</div>
+          <p>Only 1 of the 10 losses went to a competitor. The other 9 are fit, timing, budget or no decision.</p>
+          <div class="so">Tighten qualification at SQL acceptance with Sales; the problem sits upstream of the deal, not in competitive positioning.</div></div>
+        <div class="finding"><div class="t">The "company size" loss reason is mislabelled</div>
+          <p>3 of the 4 "Not a fit: company size" losses are companies with 5,000+ employees. Only 1 is under 1,000.</p>
+          <div class="so">Agree loss-reason definitions with Sales (too small, too complex, wrong buyer) before using them to steer targeting.</div></div>
+        <div class="finding"><div class="t">The very largest accounts stall</div>
+          <p>Companies with 20,000+ employees closed 0 of 4: no budget, no decision, and two "not a fit". Companies with 1,000 to 19,999 closed 14 of 18.</p>
+          <div class="so">Keep 1,000–19,999 as the core paid target; treat 20,000+ as an ABM motion with executive sponsorship, not volume.</div></div>
+        <div class="finding"><div class="t">Some of H1 FY27's pipeline already exists</div>
+          <p>Two losses were marked "Timing: revisit FY27", and 26 SQOs were still open at the 30 Jun 2026 extract.</p>
+          <div class="so">Run a re-engagement program with AEs on these accounts before buying new volume; they are the cheapest SQLs available.</div></div>
+      </div></div>
+      <details><summary>The 10 lost deals</summary><div class="tablewrap"><table class="wl" id="lostdeals" style="min-width:640px"></table></div></details>
+      <ul class="notes"><li>Ten losses is a very small sample. Treat these patterns as questions to test with Sales, not conclusions.</li><li>This section uses the cleaned data, all leads, full year, and does not change with the filters at the top of the page. Win rate here is wins out of closed deals; open SQOs are excluded.</li></ul>
+    </div>
+  </section>
+
+  <section class="panel" id="p-profile" role="tabpanel" aria-labelledby="t-profile" hidden>
+    <p class="sub" id="profhint" style="margin:0"></p>
+    <div class="card">
+      <h2>Sales cycle</h2>
+      <p class="lede">Median days between stages, for leads that reached each stage. Created is the form fill; MQL is when the lead crossed the Pardot scoring threshold.</p>
+      <div class="tiles"><div class="tgrid" id="cyctiles"></div></div>
+      <div class="timeline" id="timeline"></div>
+      <div class="lostgrid">
+        <div><h3>Stage durations (days)</h3><div class="tablewrap"><table class="wl" id="cyctable" style="min-width:520px"></table></div></div>
+        <div><h3>Median days by channel</h3><div class="tablewrap"><table class="wl" id="cycch" style="min-width:420px"></table></div></div>
+      </div>
+      <ul class="notes"><li>Only deals that closed before the 30 Jun 2026 extract are timed, so long cycles are under-represented and the true time to close is likely longer.</li><li>Four leads with an SQL date before their MQL date (LD-06) are left out of the MQL → SQL figures.</li></ul>
+    </div>
+    <div class="card">
+      <h2>By campaign</h2>
+      <p class="lede">Twelve campaigns across the six channels, ranked by MQL → SQL rate. Spend is only recorded at campaign level for Syndication and Demandbase (SP-04), so costs stay at channel level.</p>
+      <div class="tablewrap"><table class="wl prof" id="pcamp" style="min-width:820px"></table></div>
+    </div>
+    <div class="card"><h2>By region</h2><div class="tablewrap"><table class="wl prof" id="preg" style="min-width:600px"></table></div></div>
+    <div class="card"><h2>By job title</h2><div class="tablewrap"><table class="wl prof" id="ptitle" style="min-width:600px"></table></div></div>
+    <div class="card">
+      <h2>What this means for H1 FY27</h2>
+      <div class="findings">
+        <div class="finding"><div class="t">The offer matters inside a channel</div>
+          <p>On LinkedIn, the Total Cost of Care report converts to SQL at 27%; the Benefits Leader ABM campaign at 15%. The AI in Member Experience webinar beats Navigating Care Costs, 31% to 25%. Both Google Demand Gen campaigns sit at 2–3%.</p>
+          <div class="so">Shift LinkedIn toward the Total Cost of Care report and AI-led content, and rebuild or retire the Benefits Leader ABM campaign.</div></div>
+        <div class="finding"><div class="t">Practitioners convert; executives rarely do through forms</div>
+          <p>Benefits Managers convert at 28% and Directors of Total Rewards at 22%, with 7 of the 16 wins ($5.5M). SVP HR, VP People Ops and VP Total Rewards convert at 8–10%, with 1 win between them.</p>
+          <div class="so">Aim paid offers at Total Rewards and Benefits directors and managers; reach VPs and the C-suite through ABM and roundtables.</div></div>
+        <div class="finding"><div class="t">Canada converts at about half the US rate</div>
+          <p>Canada produced 154 MQLs but only 9% reached SQL, with 1 win. US regions ran at 13–19%. The real League says 1 in 2 Canadians use its platform, so paid demand may matter less there (inference).</p>
+          <div class="so">Weight H1 FY27 paid media toward the US, after checking with Sales how Canadian deals actually arrive.</div></div>
+        <div class="finding"><div class="t">SQLs arrive in weeks; revenue takes half a year</div>
+          <p>Median: 10 days from form fill to MQL, about 3 weeks from MQL to SQL, and about 5.5 months from MQL to a won deal. The SQL lag is similar on every channel.</p>
+          <div class="so">Judge H1 FY27 on SQLs, not revenue. Front-load programs in July to October, since MQLs after early December land as SQLs in the next half.</div></div>
+      </div>
+      <p class="muted" style="margin:0;font-size:12px">Findings use the cleaned data, all leads, full year. Job titles appear evenly across every segment (for example, "Health Plan Product Director" at employers and brokers), so treat title patterns with caution.</p>
+    </div>
+  </section>
+
+  <section class="panel" id="p-budget" role="tabpanel" aria-labelledby="t-budget" hidden>
+    <div class="card">
+      <h2>The planning brief</h2>
+      <ul class="brief">
+        <li><span>Planning period</span><b>H1 FY27: 1 Jul – 31 Dec 2026</b></li>
+        <li><span>Paid media budget</span><b>$280,000 (flat)</b></li>
+        <li><span>Already committed</span><b>$45,000 to HLTH 2026, Las Vegas, mid-November</b></li>
+        <li><span>Targets</span><b>300 MQLs and 55 SQLs</b></li>
+        <li><span>Basis for projections</span><b>Cleaned FY26 rates (1 Jul 2025 – 30 Jun 2026)</b></li>
+        <li><span>Filters at the top of the page</span><b>Do not apply to this tab</b></li>
+      </ul>
+      <details class="tldet"><summary><span class="tl-btn"><span class="show">Show key dates</span><span class="hide">Hide key dates</span></span></summary>
+      <div class="tlwrap"><div class="tl">
+        <div class="tl-band h1" style="grid-column:1 / 7">H1 FY27 · plan period · SQLs counted here</div>
+        <div class="tl-band h2" style="grid-column:7 / 13">H2 FY27 · most H1 deals close here</div>
+        <div class="tl-m">Jul '26</div><div class="tl-m">Aug</div><div class="tl-m">Sep</div><div class="tl-m">Oct</div><div class="tl-m">Nov</div><div class="tl-m">Dec</div>
+        <div class="tl-m dim">Jan '27</div><div class="tl-m dim">Feb</div><div class="tl-m dim">Mar</div><div class="tl-m dim">Apr</div><div class="tl-m dim">May</div><div class="tl-m dim">Jun</div>
+        <div class="tl-e" style="grid-column:1 / 3"><b>July</b> Last month of the current Syndication contract</div>
+        <div class="tl-e" style="grid-column:2 / 4"><b>August</b> Syndication renewal: cancel (Option A) or renegotiate (Option B)</div>
+        <div class="tl-e" style="grid-column:5 / 7"><b>Mid-November</b> HLTH 2026 ($45K committed)</div>
+        <div class="tl-e warn" style="grid-column:6 / 9"><b>Early December</b> Last MQLs that can still become H1 SQLs (about 3 weeks MQL → SQL)</div>
+        <div class="tl-e" style="grid-column:6 / 8"><b>31 December</b> H1 closes; SQLs measured against 55</div>
+        <div class="tl-e dim" style="grid-column:7 / 13"><b>January – June 2027</b> H1 pipeline turns into revenue (about 5.5 months MQL → won)</div>
+      </div></div>
+      </details>
+    </div>
+
+    <section class="rail scen" aria-label="Scenario controls">
+        <div class="ctl"><span class="lbl" id="l-preset">Start from</span>
+          <div class="seg" role="group" aria-labelledby="l-preset" id="presets">
+            <button data-p="bal" aria-pressed="true">Balanced</button>
+            <button data-p="sql" aria-pressed="false">SQL-first</button>
+            <button data-p="mql" aria-pressed="false">MQL-first</button>
+            <button data-p="fy26" aria-pressed="false">FY26 H2 mix</button>
+          </div></div>
+        <div class="ctl penctl"><label for="pen">Diminishing returns, base case: <b id="pen-v"></b></label>
+          <input type="range" id="pen" min="0" max="75" step="5" value="25">
+          <span class="hint2">Spend above a channel's FY26 half-year average buys this much less. The range shows 0% to 50%.</span></div>
+        <div class="ctl evctl"><label class="chk"><input type="checkbox" id="evadj" checked> Adjust Events for missing March spend</label></div>
+      </section>
+
+    <div class="card">
+      <h2>What the plan delivers</h2>
+      <p class="lede" id="bl-lede" style="max-width:none"></p>
+      <div class="rangegrid">
+        <div class="rangebox" id="rg-sql"></div>
+        <div class="rangebox" id="rg-mql"></div>
+      </div>
+      <div class="callout" id="bl-trade"></div>
+      <div class="tiles"><div class="tgrid" id="bl-tiles"></div></div>
+    </div>
+
+    <div class="card">
+      <h2>Allocation</h2>
+      <div class="tablewrap"><table class="alloc" id="alloc" aria-label="H1 FY27 allocation"></table></div>
+      <p class="capnote" id="capnote" role="status" hidden></p>
+      <div id="syn-opts"></div>
+      <p class="muted" id="readout" style="margin:0"></p>
+    </div>
+
+    <div class="card">
+      <h2>Content Syndication: three options at the August renewal</h2>
+      <div class="findings">
+        <div class="finding"><div class="t">Option A: complete the contract, then cancel (default)</div>
+          <p>Pay out the current term through July (about $8,125) and do not renew. FY26: 154 unique leads against 200 guaranteed, 10% to SQL, $6,500 per SQL.</p>
+          <div class="so">Frees about $40K for channels that convert. Risk: losing a source of mid-funnel volume if LinkedIn doesn't scale.</div></div>
+        <div class="finding"><div class="t">Option B: renegotiate on terms that match FY26 results</div>
+          <p>Pay only for unique leads at 1,000+ employee companies, de-duplicate before delivery, credit the 46-lead shortfall, and add a monthly exit clause. Price and volume are assumptions you can type in below the table.</p>
+          <div class="so">1,000+ Syndication leads converted at only 10% in FY26, so price decides it. At about $600 per unique lead or less, it beats LinkedIn's extra spend; above that, Option A wins.</div></div>
+        <div class="finding"><div class="t">Option C: renew on current terms</div>
+          <p>Keep the $97,500-a-year contract ($48,750 this half) as it is: 200 guaranteed leads, no 1,000+ filter and no de-duplication. In FY26 it delivered 154 unique leads, 10% to SQL.</p>
+          <div class="so">Roughly SQL-neutral (within half an SQL) and about 35 more MQLs, whenever the money would otherwise go to LinkedIn above its FY26 level. The cost: rewarding a vendor that missed its guarantee by 23%, with no leverage left.</div></div>
+      </div>
+    </div>
+
+    <details class="card"><summary>Assumptions (editable)</summary>
+      <p class="lede" style="margin-top:10px">Cleaned FY26 rates, full year. Change a value to test it; "Reset" restores FY26. SQLs = MQLs × MQL → SQL rate. SQOs, wins and ACV use the FY26 averages: 49.5% SQL → SQO, 30.8% SQO → Won, $734K average ACV.</p>
+      <div class="tablewrap"><table class="alloc" id="assume" aria-label="Assumptions"></table></div>
+      <button class="btn" id="reset-assume" type="button">Reset to FY26 rates</button>
+    </details>
+  </section>
+
+  <section class="panel" id="p-log" role="tabpanel" aria-labelledby="t-log" hidden>
+    <div class="card">
+      <h2>Data log</h2>
+      <p class="lede">Every rule applied between the extract as delivered and the cleaned data. IDs match League_Known_Data_Issues.xlsx (v1.1). Rows are flagged, never deleted: the cleaned data excludes only the 36 duplicate leads and the duplicate spend row.</p>
+      <div class="tablewrap"><table class="logtable" id="logtable" aria-label="Cleaning log"></table></div>
+    </div>
+  </section>
+
+  <section class="panel" id="p-build" role="tabpanel" aria-labelledby="t-build" hidden>
+    <div class="card">
+      <h2>How this was built</h2>
+      <ol class="two">
+        <li>Read the brief and data package, ran first-pass channel math and agreed a five-step plan.</li>
+        <li>Logged the data problems before analysing: Known Issues file v1.1, with two new issues (LD-18, LD-19) and a dated change log.</li>
+        <li>Wrote a cleaning script (clean_fy26.py) that flags rather than deletes, one rule per issue ID, re-runnable from the raw files.</li>
+        <li>Built the Funnel tab with the as-delivered vs cleaned toggle.</li>
+        <li>Reviewed the page through more than 20 comment threads, adding KPIs, actions, lead profile, ABM, closed deals and attribution.</li>
+        <li>Built the budget allocator: four presets, a diminishing-returns range, three Syndication options and a hard $280K cap.</li>
+        <li>Ran a consistency pass for terms, contradictions and formatting, then wrote the recommendation.</li>
+      </ol>
+      <p class="muted" style="margin:0;font-size:12.5px">Tools: a Claude project holding standing instructions and the data package; Python (pandas) for cleaning and checks; this interactive page; web search for League's market context; a headless browser to check each version before publishing. About 30 published versions, with the full prompt history in the Claude project.</p>
+    </div>
+
+    <div class="card">
+      <h2>Data decisions</h2>
+      <div class="tablewrap"><table class="wl rtext" style="min-width:760px">
+        <thead><tr><th>Decision</th><th>Why</th><th>Effect</th></tr></thead>
+        <tbody>
+          <tr><td><b>Duplicates</b> (LD-04): keep the most advanced record per email</td><td>36 pairs, mostly created the same day</td><td>765 → 729 leads; no SQLs lost; 23 of the 36 were Syndication</td></tr>
+          <tr><td><b>Channel</b> (LD-02, LD-18): take channel from the campaign name</td><td>14 spellings, and 35 LinkedIn leads untagged after the landing page migration</td><td>LinkedIn 121 → 150 MQLs and 26 → 31 SQLs</td></tr>
+          <tr><td><b>Stage</b> (LD-01, LD-05): derive stage from dates; count 3 wins with no SQL date as SQL and SQO</td><td>10 label spellings; dates agree once normalised</td><td>105 SQLs and 52 SQOs</td></tr>
+          <tr><td><b>Spend</b> (SP-01, SP-02): drop the duplicate Syndication row; leave March Events blank</td><td>The duplicate was re-keyed; a guessed March figure would hide the gap</td><td>$567K total; Events cost per SQL shown as $6.3K–$6.9K</td></tr>
+          <tr><td><b>ICP</b> (LD-10, LD-11): 1,000+ employees as a filter, not a deletion; Government kept as a buyer; Broker / Consultant tagged as influencers</td><td>The real League sells to government and public health systems; Government produced 14 SQLs and a $793K win</td><td>Available as toggles on every analysis tab</td></tr>
+          <tr><td><b>Budget basis</b> (LD-19): treat $280K as fixed, not "flat on H2"</td><td>H2 FY26 spend was $286.4K; H1 FY26 was $280.6K</td><td>Stop/start calls compare with H2 FY26 actuals</td></tr>
+          <tr><td><b>Attribution</b>: single-touch, lead-level, as delivered</td><td>No touchpoint or campaign-member data to rebuild multi-touch</td><td>Decisions chosen to hold under any model; Demandbase flagged as most exposed</td></tr>
+          <tr><td><b>Open questions</b>: logged as stated assumptions rather than sent to the recruiter</td><td>Treat them as part of the exercise and show how they were handled</td><td>LD-17, LD-19 and SP-02 in the Data log</td></tr>
+        </tbody></table></div>
+    </div>
+
+    <div class="card">
+      <h2>How credit is assigned</h2>
+      <p class="lede">The extract uses single-touch, lead-level attribution: each lead counts for the one campaign it was assigned to, which is the campaign behind its form fill. There is no touchpoint history, campaign-member data or opportunity contact roles, so multi-touch credit cannot be rebuilt from this package.</p>
+      <div class="findings">
+        <div class="finding"><div class="t">What it distorts</div>
+          <p>Awareness and ABM channels (Demandbase display, LinkedIn retargeting) influence deals without getting the form fill, so their cost per SQL is likely overstated. Direct-response channels look relatively better. Demandbase's cost per SQL is the number most exposed.</p>
+          <div class="so">Make decisions that hold under any model: Google Demand Gen's own leads convert at 2%, and the efficient channels are capped.</div></div>
+        <div class="finding"><div class="t">What would fix it</div>
+          <p>Salesforce campaign-member history, opportunity contact roles, Demandbase account-level engagement and a self-reported "how did you hear about us" field. The Tier 1 flag and form type can't stand in for these (LD-12, LD-13).</p>
+          <div class="so">Put these in place in the first 90 days, and run a holdout test on part of the Tier 1 list to measure Demandbase directly.</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>What I chose to ignore</h2>
+      <ul class="notes">
+        <li><b>Form type</b> (LD-12): every form type appears on every channel, so it carries no signal.</li>
+        <li><b>Impressions and clicks</b> (SP-07): only two of six channels report them.</li>
+        <li><b>Monthly spend trends</b> for Syndication, Demandbase and Google Demand Gen (SP-03): the amounts are straight-lined.</li>
+        <li><b>Campaign-level costs</b> (SP-04): four channels report spend rolled up, so costs stay at channel level.</li>
+        <li><b>Channel win rates and Media CAC for ranking</b>: 0 to 4 wins per channel is too thin.</li>
+        <li><b>Job titles as a targeting rule</b>: titles spread evenly across segments, likely a synthetic-data artefact.</li>
+        <li><b>Leads created before FY26 or MQL'd after the extract</b> (LD-07, LD-08): kept and flagged; too few to matter.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>What didn't work, and what I threw away</h2>
+      <div class="tablewrap"><table class="wl rtext" style="min-width:720px">
+        <thead><tr><th>Tried</th><th>Why it was dropped</th><th>Replaced with</th></tr></thead>
+        <tbody>
+          <tr><td>Two artifacts: a funnel dashboard and a separate model</td><td>The cleaning choices change cost per SQL, so two pages could disagree</td><td>One page where the cleaned data feeds the allocator</td></tr>
+          <tr><td>A spreadsheet budget model</td><td>Harder to show live in a session</td><td>An allocator with typed inputs, sliders and presets</td></tr>
+          <tr><td>A single 25% diminishing-returns figure</td><td>False precision on the number that matters most</td><td>A 0–50% range, with 25% as the base case</td></tr>
+          <tr><td>SQL-first as the headline plan</td><td>The model showed 300 MQLs costs less than one SQL</td><td>Balanced, with the cost of the MQL target shown</td></tr>
+          <tr><td>"The two targets conflict"</td><td>Not true once costed</td><td>"300 MQLs is cheap; 55 SQLs is the tight one"</td></tr>
+          <tr><td>Missing owners as a cause of lost deals</td><td>7 of the 16 wins were also unassigned</td><td>Kept as a follow-up risk, not a loss driver</td></tr>
+        </tbody></table></div>
+    </div>
+
+    <div class="card">
+      <h2>What the AI got wrong</h2>
+      <div class="tablewrap"><table class="wl rtext" style="min-width:760px">
+        <thead><tr><th>What it said</th><th>How it was caught</th><th>Fix</th></tr></thead>
+        <tbody>
+          <tr><td>LinkedIn's conversion fell because of the landing page migration</td><td>Checked the same months on other channels: they fell further (15% → 8%), so it was cohort lag</td><td>Migration logged as a tracking break only (LD-18), noted in the issues change log</td></tr>
+          <tr><td>Keep the earliest record of each duplicate</td><td>Profiling showed most pairs were created the same day, and 2 later copies had progressed</td><td>Changed to "most advanced record" before any numbers were published</td></tr>
+          <tr><td>Government is outside the ICP (first version of the issues file)</td><td>Web research on League's real buyers, plus Government's 14 SQLs and a $793K win</td><td>Government kept in the ICP; LD-11 annotated in v1.1</td></tr>
+          <tr><td>The 4 "company size" losses prove small companies don't fit</td><td>3 of the 4 were companies with 5,000+ employees</td><td>Removed as evidence; became its own finding (the reason is mislabelled)</td></tr>
+          <tr><td>"I can hit both targets"</td><td>Consistency pass against the allocator: the SQL base case is 53</td><td>Reworded to "300 MQLs and 52–56 SQLs"</td></tr>
+          <tr><td>The MQL target costs "about one SQL"; renegotiating Syndication is no better than LinkedIn</td><td>The allocator showed 0.7 SQLs, and Option B as best on both SQLs and MQLs</td><td>Both corrected on the page</td></tr>
+          <tr><td>First build showed every tab at once</td><td>Render check before publishing</td><td>Fixed a styling rule that overrode the hidden tabs</td></tr>
+        </tbody></table></div>
+    </div>
+
+    <div class="card">
+      <h2>Numbers I trust least</h2>
+      <div class="tablewrap"><table class="wl rtext" style="min-width:760px">
+        <thead><tr><th>Number</th><th>Why</th><th>What would firm it up</th></tr></thead>
+        <tbody>
+          <tr><td><b>52–56 SQLs</b></td><td>Depends on how LinkedIn scales; its extra H2 FY26 spend cost about 70% more per MQL</td><td>LinkedIn cost per SQL tracked monthly from July</td></tr>
+          <tr><td><b>Demandbase at $5.4K per SQL</b></td><td>12 SQLs, and single-touch attribution misses its influence</td><td>Account-level engagement data and a holdout test on part of the Tier 1 list</td></tr>
+          <tr><td><b>Events at $6.3K per SQL</b></td><td>March invoice missing, spend not split by campaign, and HLTH 2025 has no wins yet</td><td>The agency invoice and campaign-level event costs</td></tr>
+          <tr><td><b>About 8 wins and $6M of ACV</b></td><td>Built on 16 FY26 wins; open SQOs understate the win rate</td><td>Re-run once the 26 open SQOs close</td></tr>
+          <tr><td><b>Webinars at 3 a month</b></td><td>FY26 ran about 2; when H2 spend rose 45%, webinar MQLs fell from 49 to 40</td><td>A booked July–December calendar by the end of July</td></tr>
+          <tr><td><b>Syndication Option B at $600 per lead</b></td><td>An assumption, with no vendor quote yet</td><td>A vendor proposal before the August renewal</td></tr>
+        </tbody></table></div>
+    </div>
+  </section>
+</div>
+<div id="tip" hidden></div>
+
+<script>
+const D = {"channels":["Google Demand Gen","LinkedIn","Content Syndication","Webinars","Events","Demandbase"],"leads":[[4,4,0,0,0,1,0,0,0],[3,3,0,0,0,0,0,0,0],[0,0,0,0,1,1,1,0,0],[2,2,0,0,0,1,0,0,0],[0,0,0,0,0,0,1,0,0],[0,0,0,0,0,0,0,1,0],[3,3,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,0,0],[3,3,0,0,0,1,0,1,0],[0,0,0,0,0,0,0,0,0],[1,1,0,0,0,1,0,0,0],[0,0,0,0,0,0,1,1,0],[5,5,0,0,0,1,0,0,0],[0,0,0,0,0,1,0,1,0],[3,3,1,1,0,1,0,1,0],[3,3,1,1,0,1,0,0,0],[1,1,0,0,0,1,0,0,0],[1,1,0,0,0,1,0,1,0],[5,5,1,1,0,1,0,1,0],[4,4,0,0,0,1,0,1,0],[1,1,1,1,0,1,0,1,0],[0,0,0,0,0,1,0,0,0],[2,2,0,0,0,1,0,1,0],[0,0,0,0,0,0,1,1,0],[2,2,0,0,0,1,0,0,0],[0,0,0,0,0,0,1,0,0],[2,2,0,0,1,0,0,1,0],[4,4,0,0,0,1,0,0,0],[4,4,1,1,0,1,0,0,0],[2,2,0,0,0,0,0,1,0],[0,0,0,0,0,0,1,1,0],[0,0,0,0,0,1,0,0,0],[2,2,0,0,0,0,0,0,0],[0,0,0,0,0,0,1,0,0],[1,1,2,2,0,1,0,1,0],[3,3,0,0,0,0,0,1,0],[3,3,4,4,0,1,0,0,0],[1,1,0,0,0,1,0,0,0],[1,1,0,0,0,1,0,0,0],[3,3,0,0,0,1,0,1,0],[0,0,0,0,0,0,1,1,0],[1,1,4,4,0,0,0,0,0],[2,2,0,0,0,0,1,0,0],[2,2,1,1,0,1,0,1,0],[6,1,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,1,0],[2,2,0,0,0,1,1,1,0],[2,2,0,0,0,0,0,0,0],[4,4,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,0,0],[3,3,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,0,0],[1,1,0,0,0,1,0,0,0],[0,0,0,0,0,0,1,1,0],[1,1,4,4,0,1,1,0,0],[0,0,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,0,0],[2,2,0,0,0,1,0,1,0],[6,1,0,0,0,1,0,1,0],[1,1,1,1,0,0,0,1,0],[0,0,0,0,0,0,0,1,0],[0,0,0,0,0,1,0,1,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,1,0,0,0],[2,2,0,0,0,0,0,1,0],[2,2,0,0,0,1,0,1,0],[0,0,0,0,0,1,1,1,0],[6,1,0,0,0,1,0,1,0],[0,0,1,1,0,0,0,1,0],[2,2,0,0,0,0,0,0,0],[1,1,0,0,0,1,0,0,0],[1,1,0,0,0,1,0,1,0],[4,4,0,0,0,1,0,1,0],[2,2,0,0,1,0,1,0,0],[0,0,0,0,0,1,1,0,0],[1,1,0,0,0,1,0,0,0],[2,2,0,0,0,1,0,0,0],[4,4,1,1,0,1,0,0,0],[5,5,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,1,0],[3,3,2,2,0,1,0,0,0],[1,1,0,0,0,1,0,0,0],[3,3,0,0,0,1,0,0,0],[1,1,0,0,0,1,0,0,0],[1,1,0,0,0,0,0,0,0],[3,3,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,0,0],[5,5,1,1,0,1,0,1,0],[6,1,0,0,0,0,1,1,0],[3,3,0,0,0,1,0,1,0],[2,2,2,2,0,0,1,0,0],[6,1,0,0,0,1,0,1,0],[1,1,0,0,0,0,1,0,0],[3,3,0,0,0,0,0,0,0],[2,2,0,0,0,1,1,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,1,0,0,1,0],[1,1,1,1,0,1,0,1,0],[0,0,0,0,0,0,0,0,0],[3,3,1,1,0,1,0,1,0],[2,2,0,0,0,1,0,0,0],[2,2,0,0,0,0,0,1,0],[3,3,0,0,0,1,0,1,0],[0,0,0,0,0,1,0,0,0],[4,4,3,3,0,0,0,0,972000],[2,2,0,0,0,0,0,0,0],[2,2,0,0,0,0,0,0,0],[0,0,0,0,0,0,1,0,0],[3,3,0,0,0,1,0,1,0],[1,1,3,3,0,1,0,0,612000],[2,2,0,0,0,1,0,1,0],[0,0,0,0,0,0,1,1,0],[6,1,2,2,0,1,0,1,0],[0,0,0,0,0,1,0,1,0],[6,1,0,0,0,1,0,1,0],[0,0,0,0,0,0,1,1,0],[0,0,0,0,0,1,0,1,0],[3,3,0,0,0,0,0,1,0],[3,3,1,1,0,1,0,0,0],[1,1,0,0,0,0,0,0,0],[0,0,0,0,0,0,1,0,0],[6,1,0,0,0,1,0,1,0],[1,1,0,0,1,1,0,0,0],[3,3,0,0,0,1,0,0,0],[2,2,0,0,0,1,1,0,0],[6,1,0,0,0,1,0,1,0],[0,0,0,0,0,0,0,0,0],[3,3,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,1,1,0,0,1,0,0],[0,0,0,0,0,0,0,1,0],[2,2,0,0,0,1,0,1,0],[0,0,0,0,0,1,1,1,0],[0,0,0,0,0,0,1,0,0],[0,0,0,0,0,0,1,1,0],[0,0,0,0,0,0,1,0,0],[0,0,0,0,0,0,1,1,0],[2,2,0,0,0,0,0,0,0],[4,4,0,0,0,1,0,0,0],[3,3,2,2,0,1,1,0,0],[3,3,1,1,0,1,0,1,0],[0,0,0,0,0,1,0,1,0],[0,0,0,0,0,0,1,0,0],[0,0,0,0,0,0,1,0,0],[3,3,1,1,0,1,0,1,0],[0,0,0,0,0,0,0,1,0],[4,4,0,0,0,1,0,1,0],[1,1,0,0,0,0,0,1,0],[2,2,0,0,0,1,0,0,0],[5,5,4,4,0,1,0,0,0],[0,0,1,1,0,0,1,0,0],[4,4,0,0,1,1,0,0,0],[2,2,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,0,0],[3,3,0,0,0,0,0,0,0],[2,2,0,0,0,1,0,0,0],[1,1,0,0,0,1,0,0,0],[6,1,0,0,0,1,0,1,0],[2,2,0,0,0,0,0,0,0],[0,0,0,0,0,0,1,1,0],[4,4,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[3,3,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,0,0],[1,1,0,0,0,1,0,1,0],[0,0,0,0,0,1,1,1,0],[1,1,0,0,0,1,0,0,0],[4,4,2,2,0,1,0,1,0],[0,0,0,0,0,0,0,0,0],[2,2,0,0,0,0,0,0,0],[3,3,0,0,0,0,0,0,0],[2,2,1,1,0,1,0,0,0],[3,3,0,0,0,1,0,1,0],[3,3,0,0,0,1,0,1,0],[4,4,2,2,0,1,0,0,0],[6,1,2,2,0,1,0,1,0],[1,1,0,0,0,1,0,1,0],[2,2,0,0,0,0,0,0,0],[5,5,0,0,0,1,0,0,0],[6,1,0,0,0,0,0,1,0],[2,2,0,0,0,1,0,1,0],[1,1,0,0,0,1,0,1,0],[1,1,1,1,0,1,0,0,0],[3,3,0,0,0,1,0,1,0],[0,0,0,0,0,0,1,1,0],[0,0,0,0,0,1,1,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,1,0],[1,1,0,0,0,1,0,0,0],[1,1,1,1,0,1,0,0,0],[2,2,0,0,1,0,0,1,0],[2,2,0,0,0,0,0,0,0],[2,2,0,0,0,0,0,0,0],[1,1,0,0,0,0,0,1,0],[4,4,0,0,0,1,0,0,0],[0,0,0,0,0,0,1,0,0],[1,1,3,3,0,0,0,0,589000],[0,0,0,0,0,0,1,1,0],[0,0,0,0,0,0,1,0,0],[3,3,0,0,0,1,0,0,0],[6,1,1,1,0,1,0,1,0],[0,0,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,0,0],[2,2,0,0,0,0,0,1,0],[1,1,0,0,0,1,0,0,0],[2,2,0,0,0,0,0,0,0],[2,2,4,4,0,0,0,0,0],[0,0,0,0,0,0,1,1,0],[0,0,0,0,0,0,1,1,0],[6,1,0,0,0,0,0,1,0],[2,2,0,0,1,1,0,1,0],[1,1,0,0,0,1,0,1,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,1,1,0,0],[2,2,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,1,0],[6,1,0,0,0,1,0,1,0],[2,2,0,0,0,0,0,1,0],[0,0,0,0,0,0,1,0,0],[1,1,0,0,0,1,0,0,0],[1,1,0,0,0,1,0,1,0],[0,0,0,0,0,0,0,0,0],[1,1,0,0,1,1,0,1,0],[0,0,0,0,0,1,1,1,0],[2,2,0,0,0,0,0,1,0],[2,2,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,1,0],[0,0,0,0,0,1,0,1,0],[2,2,0,0,0,1,0,0,0],[0,0,0,0,0,1,0,1,0],[6,1,0,0,0,1,1,1,0],[4,4,1,1,0,1,0,1,0],[2,2,0,0,1,1,0,0,0],[1,1,0,0,0,1,0,1,0],[0,0,0,0,0,0,1,1,0],[0,0,0,0,0,0,1,0,0],[2,2,0,0,1,1,0,1,0],[0,0,0,0,0,0,0,0,0],[2,2,0,0,1,0,0,1,0],[3,3,4,4,0,1,0,0,0],[0,0,0,0,0,0,1,1,0],[0,0,0,0,0,0,0,1,0],[2,2,0,0,0,1,0,1,0],[0,0,0,0,0,0,1,0,0],[4,4,0,0,0,1,0,0,0],[5,5,0,0,0,1,0,1,0],[1,1,2,2,0,1,0,1,0],[2,2,0,0,0,1,0,1,0],[0,0,0,0,0,0,1,1,0],[0,0,0,0,0,0,0,0,0],[1,1,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,1,0],[2,2,1,1,0,1,0,0,0],[1,1,0,0,0,0,0,0,0],[1,1,0,0,0,0,0,1,0],[0,0,0,0,0,1,1,0,0],[2,2,0,0,0,1,0,0,0],[3,3,2,2,0,1,0,1,0],[1,1,1,1,0,1,0,0,0],[0,0,0,0,0,0,1,0,0],[0,0,0,0,0,0,0,0,0],[3,3,0,0,0,1,0,0,0],[6,1,0,0,0,1,0,1,0],[1,1,0,0,1,1,0,1,0],[5,5,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,1,0],[2,2,0,0,0,0,0,1,0],[2,2,1,1,0,0,0,1,0],[4,4,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,0,0],[2,2,0,0,0,1,0,1,0],[2,2,0,0,0,0,0,0,0],[0,0,0,0,0,1,0,0,0],[3,3,0,0,0,1,0,0,0],[1,1,1,1,0,1,0,1,0],[2,2,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,1,0],[1,1,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,1,0],[4,4,3,3,0,1,0,1,775000],[1,1,1,1,0,1,0,1,0],[1,1,0,0,0,1,0,1,0],[2,2,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,1,0],[0,0,0,0,0,0,1,1,0],[1,1,0,0,0,1,0,1,0],[0,0,0,0,0,0,0,0,0],[4,4,0,0,0,1,0,1,0],[0,0,0,0,0,0,0,1,0],[2,2,0,0,0,0,0,1,0],[2,2,0,0,0,1,0,1,0],[1,1,0,0,0,1,0,1,0],[2,2,1,1,0,1,0,0,0],[1,1,0,0,0,0,0,1,0],[3,3,0,0,0,1,0,0,0],[2,2,0,0,0,1,0,0,0],[0,0,0,0,0,1,1,1,0],[3,3,0,0,0,1,0,1,0],[5,5,0,0,0,1,0,0,0],[1,1,0,0,0,1,0,1,0],[0,0,0,0,0,0,0,1,0],[5,5,0,0,0,1,0,1,0],[0,0,0,0,0,0,1,1,0],[0,0,0,0,0,0,1,1,0],[0,0,0,0,0,1,0,0,0],[4,4,0,0,0,1,0,0,0],[2,2,0,0,0,0,0,0,0],[0,0,0,0,0,1,1,0,0],[2,2,1,1,0,0,0,1,0],[2,2,0,0,0,1,0,0,0],[2,2,0,0,0,1,0,1,0],[3,3,3,3,0,1,0,0,427000],[0,0,0,0,0,0,1,1,0],[1,1,0,0,0,0,0,0,0],[1,1,0,0,0,1,0,1,0],[1,1,0,0,0,1,0,0,0],[2,2,0,0,0,1,0,1,0],[0,0,0,0,0,1,0,0,0],[6,1,0,0,0,0,0,1,0],[2,2,0,0,0,0,0,0,0],[2,2,0,0,0,0,0,1,0],[1,1,0,0,0,1,0,1,0],[1,1,0,0,0,1,1,0,0],[1,1,0,0,0,1,0,1,0],[0,0,0,0,0,0,0,1,0],[2,2,0,0,0,0,0,1,0],[6,1,0,0,0,1,0,1,0],[2,2,0,0,0,0,0,0,0],[0,0,0,0,0,0,1,1,0],[4,4,3,3,0,1,0,0,1119000],[0,0,0,0,0,0,0,1,0],[0,0,0,0,0,0,1,1,0],[0,0,0,0,0,0,1,0,0],[0,0,0,0,0,1,1,0,0],[4,4,0,0,0,1,0,0,0],[2,2,0,0,0,1,0,1,0],[3,3,0,0,0,1,0,0,0],[2,2,0,0,0,0,0,0,0],[0,0,0,0,0,1,0,0,0],[0,0,0,0,0,1,1,1,0],[4,4,1,1,0,1,0,0,0],[0,0,0,0,0,0,1,1,0],[1,1,0,0,0,1,0,0,0],[3,3,0,0,0,1,0,1,0],[1,1,3,3,0,1,0,0,472000],[0,0,0,0,0,0,1,0,0],[2,2,0,0,0,1,0,0,0],[0,0,0,0,0,1,1,1,0],[1,1,0,0,0,1,0,0,0],[0,0,0,0,0,0,1,0,0],[6,1,2,2,0,1,0,1,0],[1,1,0,0,0,1,1,0,0],[2,2,0,0,0,1,0,1,0],[2,2,0,0,0,1,0,1,0],[1,1,0,0,0,0,0,0,0],[0,0,0,0,0,1,1,0,0],[5,5,0,0,0,1,0,0,0],[1,1,0,0,0,1,0,1,0],[3,3,1,1,0,1,0,1,0],[0,0,0,0,0,0,0,0,0],[2,2,0,0,0,1,0,1,0],[1,1,0,0,0,1,0,0,0],[4,4,0,0,0,1,0,1,0],[4,4,0,0,0,1,0,0,0],[0,0,0,0,0,1,1,0,0],[0,0,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,0,0],[4,4,0,0,0,1,0,0,0],[3,3,0,0,0,1,0,0,0],[2,2,0,0,0,1,0,1,0],[2,2,0,0,0,0,0,1,0],[0,0,0,0,0,0,1,0,0],[5,5,1,1,0,1,0,0,0],[0,0,0,0,0,0,1,1,0],[4,4,0,0,0,1,0,1,0],[5,5,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,1,0],[2,2,0,0,1,1,0,0,0],[0,0,0,0,0,0,0,1,0],[3,3,1,1,0,1,0,0,0],[0,0,0,0,1,1,1,0,0],[5,5,0,0,0,1,0,1,0],[0,0,0,0,0,0,0,1,0],[3,3,0,0,0,1,0,0,0],[0,0,0,0,0,0,1,0,0],[2,2,0,0,0,1,0,0,0],[3,3,0,0,0,0,0,1,0],[1,1,0,0,0,1,0,0,0],[2,2,0,0,0,0,0,0,0],[1,1,0,0,0,1,0,0,0],[3,3,3,3,0,1,1,1,739000],[0,0,0,0,0,0,0,0,0],[3,3,0,0,0,1,0,0,0],[2,2,0,0,0,1,0,1,0],[2,2,0,0,0,1,0,1,0],[3,3,0,0,0,1,0,1,0],[5,5,0,0,0,1,1,1,0],[3,3,0,0,0,1,0,1,0],[5,5,3,3,0,1,0,0,778000],[0,0,0,0,0,1,1,0,0],[3,3,0,0,0,1,0,1,0],[3,3,2,2,0,0,0,0,0],[1,1,0,0,0,1,0,1,0],[2,2,0,0,0,1,0,1,0],[2,2,0,0,0,1,0,0,0],[6,1,2,2,0,1,0,1,0],[2,2,0,0,1,1,0,1,0],[1,1,0,0,0,1,0,0,0],[2,2,0,0,0,1,0,1,0],[3,3,0,0,0,1,1,1,0],[2,2,0,0,0,1,0,1,0],[2,2,0,0,0,0,0,1,0],[3,3,0,0,0,1,1,0,0],[5,5,0,0,0,1,0,1,0],[2,2,0,0,0,0,0,1,0],[2,2,0,0,1,0,0,1,0],[6,1,0,0,0,1,0,1,0],[2,2,0,0,0,1,0,1,0],[0,0,0,0,0,0,0,1,0],[2,2,0,0,1,0,0,0,0],[3,3,0,0,0,1,0,1,0],[0,0,0,0,0,1,1,1,0],[0,0,0,0,0,1,1,0,0],[1,1,0,0,0,1,0,0,0],[0,0,0,0,0,0,1,1,0],[5,5,0,0,0,1,0,1,0],[0,0,0,0,0,0,1,0,0],[0,0,0,0,0,1,1,0,0],[3,3,0,0,0,1,0,1,0],[1,1,1,1,0,1,0,1,0],[2,2,0,0,1,0,0,0,0],[1,1,1,1,0,1,0,1,0],[2,2,0,0,0,0,0,1,0],[2,2,0,0,0,0,0,1,0],[1,1,0,0,0,1,0,0,0],[2,2,0,0,0,1,0,1,0],[2,2,0,0,0,1,0,1,0],[0,0,0,0,0,0,1,0,0],[2,2,0,0,0,1,0,1,0],[0,0,0,0,0,1,1,0,0],[2,2,0,0,1,0,0,0,0],[1,1,0,0,0,1,0,0,0],[1,1,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,1,0],[4,4,3,3,0,1,0,0,1009000],[1,1,0,0,0,1,0,1,0],[0,0,0,0,0,0,1,0,0],[1,1,0,0,0,1,0,0,0],[1,1,2,2,0,1,0,0,0],[1,1,3,3,0,1,0,0,549000],[0,0,0,0,0,0,0,0,0],[3,3,0,0,0,1,0,0,0],[0,0,0,0,0,1,0,1,0],[0,0,0,0,0,0,0,1,0],[0,0,0,0,0,1,0,0,0],[1,1,0,0,0,1,0,1,0],[0,0,0,0,0,1,0,1,0],[3,3,3,3,0,1,0,1,664000],[5,5,0,0,0,1,0,1,0],[1,1,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,1,0],[3,3,0,0,0,1,0,0,0],[2,2,0,0,0,1,0,0,0],[4,4,0,0,0,1,0,1,0],[3,3,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,1,1,0,0],[0,0,0,0,0,1,1,1,0],[1,1,0,0,0,1,0,0,0],[1,1,0,0,0,1,0,1,0],[0,0,0,0,0,0,0,1,0],[1,1,0,0,0,1,0,0,0],[0,0,0,0,0,1,1,1,0],[0,0,0,0,0,0,1,1,0],[2,2,0,0,0,0,0,1,0],[3,3,0,0,0,1,0,0,0],[2,2,0,0,0,1,0,1,0],[3,3,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,0,0],[1,1,0,0,0,0,0,1,0],[0,0,0,0,0,0,1,1,0],[3,3,1,1,0,1,0,0,0],[0,0,0,0,0,0,0,0,0],[2,2,0,0,0,0,0,0,0],[3,3,0,0,0,1,0,1,0],[4,4,0,0,0,1,0,1,0],[2,2,0,0,1,1,1,0,0],[0,0,0,0,0,1,1,0,0],[2,2,0,0,0,1,0,0,0],[0,0,0,0,0,0,1,0,0],[2,2,4,4,0,1,0,0,0],[0,0,0,0,0,0,1,0,0],[5,5,0,0,0,1,0,1,0],[2,2,0,0,0,1,0,1,0],[3,3,1,1,0,1,0,0,0],[1,1,0,0,0,1,0,0,0],[3,3,0,0,0,1,0,0,0],[2,2,1,1,0,1,0,1,0],[6,1,0,0,0,1,0,1,0],[4,4,2,2,0,1,0,1,0],[2,2,0,0,0,1,0,1,0],[0,0,1,1,0,0,1,0,0],[0,0,0,0,0,1,0,0,0],[4,4,0,0,0,1,0,0,0],[2,2,0,0,0,1,0,0,0],[2,2,0,0,1,0,0,1,0],[3,3,0,0,0,1,0,1,0],[3,3,1,1,0,1,0,0,0],[2,2,0,0,0,1,0,1,0],[3,3,0,0,0,1,0,1,0],[1,1,0,0,0,1,0,1,0],[0,0,0,0,0,1,0,0,0],[2,2,0,0,0,1,0,0,0],[5,5,0,0,0,1,0,1,0],[1,1,0,0,0,1,0,1,0],[1,1,0,0,0,1,0,1,0],[6,1,0,0,0,1,0,1,0],[1,1,2,2,0,1,0,0,0],[0,0,0,0,0,1,0,1,0],[2,2,0,0,0,1,0,1,0],[4,4,0,0,0,1,0,1,0],[2,2,0,0,0,1,0,1,0],[1,1,2,2,0,1,0,0,0],[5,5,3,3,0,1,0,0,1156000],[5,5,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,1,1,0,0],[2,2,0,0,0,0,1,1,0],[0,0,0,0,0,0,1,1,0],[1,1,0,0,0,1,0,0,0],[2,2,0,0,0,1,0,0,0],[2,2,0,0,0,0,0,1,0],[3,3,0,0,0,1,0,0,0],[3,3,0,0,0,1,0,1,0],[2,2,0,0,1,1,0,1,0],[5,5,2,2,0,1,0,0,0],[3,3,0,0,0,1,0,0,0],[2,2,0,0,0,1,0,1,0],[0,0,0,0,0,1,0,1,0],[3,3,0,0,0,1,0,1,0],[2,2,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,1,1,0],[6,1,0,0,0,1,0,1,0],[2,2,0,0,1,0,0,1,0],[1,1,0,0,0,0,0,0,0],[1,1,0,0,1,1,0,0,0],[1,1,0,0,1,1,0,0,0],[1,1,1,1,0,1,0,0,0],[6,1,0,0,0,1,0,1,0],[1,1,0,0,0,0,0,1,0],[2,2,0,0,0,1,0,1,0],[2,2,0,0,0,1,0,1,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,1,1,1,0],[2,2,1,1,0,1,0,1,0],[0,0,0,0,0,1,1,1,0],[2,2,0,0,1,1,0,1,0],[2,2,0,0,0,0,0,0,0],[6,1,0,0,0,1,0,1,0],[2,2,0,0,0,1,0,0,0],[5,5,0,0,0,1,0,0,0],[1,1,0,0,0,1,0,1,0],[0,0,0,0,0,0,0,1,0],[0,0,0,0,0,1,1,1,0],[6,1,0,0,0,1,0,1,0],[3,3,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,1,0,1,0],[2,2,0,0,0,1,0,1,0],[0,0,0,0,0,1,1,0,0],[0,0,0,0,0,0,1,0,0],[0,0,0,0,0,0,0,1,0],[0,0,0,0,0,0,1,1,0],[2,2,0,0,0,1,0,1,0],[0,0,0,0,0,0,0,1,0],[1,1,0,0,0,0,0,0,0],[3,3,2,2,0,1,0,1,0],[5,5,3,3,0,1,0,0,793000],[2,2,1,1,0,1,0,0,0],[0,0,0,0,0,1,1,1,0],[0,0,0,0,0,0,1,0,0],[1,1,0,0,0,1,0,1,0],[2,2,0,0,0,1,0,1,0],[3,3,0,0,1,0,0,0,0],[0,0,0,0,0,0,1,1,0],[0,0,0,0,0,0,0,0,0],[2,2,3,3,0,1,0,0,387000],[0,0,0,0,0,1,0,0,0],[1,1,0,0,0,1,0,0,0],[0,0,0,0,0,1,1,0,0],[1,1,1,1,0,0,0,1,0],[5,5,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,0,0],[2,2,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,0,0],[4,4,1,1,0,1,0,1,0],[0,0,0,0,0,1,1,0,0],[0,0,0,0,0,0,0,0,0],[4,4,2,2,0,1,0,0,0],[2,2,0,0,1,1,0,0,0],[1,1,0,0,0,0,0,0,0],[0,0,0,0,0,1,1,0,0],[5,5,0,0,0,1,0,0,0],[0,0,0,0,0,0,1,1,0],[1,1,0,0,0,1,0,0,0],[0,0,0,0,0,1,1,1,0],[0,0,0,0,0,0,1,0,0],[0,0,0,0,0,0,0,0,0],[2,2,0,0,0,0,0,1,0],[3,3,0,0,0,1,0,1,0],[3,3,0,0,0,1,0,0,0],[1,1,1,1,0,1,0,1,0],[1,1,0,0,0,1,0,1,0],[2,2,0,0,0,0,0,1,0],[1,1,0,0,0,1,0,0,0],[2,2,0,0,0,0,0,1,0],[3,3,0,0,0,1,0,0,0],[2,2,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,0,0],[3,3,3,3,0,1,0,0,702000],[0,0,0,0,0,0,1,0,0],[0,0,0,0,0,0,1,1,0],[1,1,0,0,0,0,0,0,0],[2,2,0,0,0,0,0,0,0],[2,2,0,0,0,1,1,0,0],[0,0,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,0,0],[2,2,0,0,0,1,0,0,0],[2,2,0,0,0,1,0,1,0],[2,2,0,0,0,1,0,1,0],[2,2,0,0,0,0,0,1,0],[0,0,0,0,0,1,0,0,0],[2,2,0,0,0,1,1,0,0],[2,2,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,1,0],[2,2,0,0,1,0,0,0,0],[2,2,0,0,0,0,0,0,0],[3,3,0,0,0,1,0,1,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,1,1,0,1,0],[6,1,0,0,0,1,0,1,0],[3,3,0,0,0,1,0,1,0],[2,2,0,0,0,1,0,1,0],[3,3,0,0,1,1,0,0,0],[5,5,4,4,0,1,0,0,0],[2,2,0,0,0,0,0,1,0],[0,0,0,0,0,1,1,1,0],[0,0,0,0,0,0,0,0,0],[2,2,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,1,0],[0,0,0,0,0,0,1,1,0],[2,2,0,0,0,0,0,1,0],[2,2,0,0,0,0,0,0,0],[0,0,0,0,0,1,0,1,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,1,0,1,0],[0,0,0,0,0,1,1,0,0],[0,0,0,0,0,0,0,0,0],[4,4,0,0,0,1,0,1,0],[5,5,1,1,0,1,0,0,0],[2,2,0,0,0,1,1,1,0],[0,0,2,2,0,0,0,0,0],[1,1,0,0,0,1,0,0,0],[2,2,0,0,0,0,0,0,0],[0,0,0,0,0,0,1,1,0],[2,2,0,0,1,0,0,1,0],[0,0,0,0,0,1,0,1,0],[1,1,1,1,0,1,0,0,0],[0,0,0,0,0,1,0,0,0],[4,4,1,1,0,1,0,1,0],[5,5,0,0,0,1,0,0,0],[3,3,0,0,0,1,0,1,0],[0,0,0,0,0,0,1,0,0],[6,1,0,0,0,0,0,1,0],[0,0,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,1,0],[2,2,0,0,0,0,0,0,0],[2,2,0,0,0,0,0,1,0],[2,2,0,0,0,1,0,1,0],[6,1,0,0,0,1,0,1,0],[6,1,0,0,0,1,0,1,0],[1,1,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,1,0,0],[0,0,0,0,0,1,1,0,0],[3,3,4,4,0,1,0,1,0],[6,1,0,0,0,1,0,1,0],[0,0,0,0,0,0,0,1,0],[2,2,0,0,0,1,0,1,0],[1,1,0,0,0,1,0,0,0],[3,3,0,0,0,1,0,1,0],[4,4,4,4,0,1,0,0,0],[0,0,0,0,0,0,0,1,0],[1,1,0,0,0,1,0,1,0],[2,2,0,0,0,1,0,1,0],[0,0,0,0,0,0,1,1,0],[2,2,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,0,0],[2,2,0,0,0,0,0,1,0],[3,3,0,0,0,1,0,0,0],[0,0,0,0,0,0,1,1,0],[4,4,2,2,0,1,0,0,0],[4,4,2,2,0,1,0,1,0],[0,0,0,0,0,0,0,0,0],[2,2,2,2,0,0,0,0,0],[2,2,1,1,0,0,0,0,0],[1,1,0,0,1,1,0,1,0],[2,2,0,0,0,0,0,1,0],[0,0,0,0,0,1,1,0,0],[2,2,0,0,1,1,0,0,0],[1,1,0,0,0,1,0,0,0],[3,3,0,0,0,1,0,0,0],[0,0,0,0,0,0,1,0,0],[5,5,1,1,0,1,0,0,0],[0,0,2,2,0,1,0,1,0],[3,3,1,1,0,1,0,0,0],[0,0,0,0,0,0,0,1,0],[0,0,0,0,0,0,1,1,0],[0,0,0,0,0,1,1,1,0],[3,3,0,0,0,1,0,0,0],[3,3,0,0,0,0,0,0,0],[2,2,0,0,0,0,0,1,0],[6,1,0,0,0,0,1,1,0],[0,0,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,1,0],[5,5,0,0,0,1,0,1,0],[0,0,0,0,0,0,1,1,0],[2,2,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,1,0],[4,4,0,0,0,1,0,1,0],[0,0,0,0,0,0,1,0,0],[0,0,0,0,0,1,1,1,0],[0,0,0,0,0,1,0,1,0],[6,1,0,0,0,1,0,1,0],[1,1,0,0,0,1,0,0,0],[1,1,0,0,0,1,0,0,0],[1,1,1,1,0,1,0,0,0],[3,3,0,0,0,1,0,1,0],[0,0,0,0,0,0,1,1,0],[2,2,0,0,1,0,0,1,0],[1,1,0,0,0,1,0,1,0],[5,5,2,2,0,1,0,0,0],[2,2,0,0,0,1,0,1,0],[0,0,0,0,0,0,1,0,0],[2,2,0,0,0,0,0,1,0],[0,0,0,0,0,0,1,0,0],[4,4,0,0,0,1,0,0,0],[5,5,0,0,0,1,0,0,0],[1,1,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[2,2,0,0,0,1,0,0,0],[0,0,0,0,0,0,1,0,0]],"spend":{"raw":{"Google Demand Gen":[27499.98,27499.98],"LinkedIn":[72250.0,97749.99],"Content Syndication":[56875.0,48750.0],"Webinars":[29604.17,42895.83],"Events":[70000.0,37000.0],"Demandbase":[32500.02,32500.02]},"clean":{"Google Demand Gen":[27499.98,27499.98],"LinkedIn":[72250.0,97749.99],"Content Syndication":[48750.0,48750.0],"Webinars":[29604.17,42895.83],"Events":[70000.0,37000.0],"Demandbase":[32500.02,32500.02]}},"log":[{"issue_id":"LD-02 / LD-18","rule":"Channel taken from campaign_name instead of channel_reported","rows_affected":35,"effect_on_clean_view":"Blank/Unknown rows recovered to their channel (all LinkedIn)"},{"issue_id":"LD-02","rule":"Spelling/case variants of channel_reported normalised via campaign_name","rows_affected":378,"effect_on_clean_view":"No count change; labels unified"},{"issue_id":"LD-03","rule":"Missing UTMs flagged; not used for attribution","rows_affected":60,"effect_on_clean_view":"None (campaign_name used instead)"},{"issue_id":"LD-01","rule":"Stage derived from date fields; 10 label spellings mapped to 5 stages for comparison","rows_affected":372,"effect_on_clean_view":"Labels disagreeing with dates after mapping: 0"},{"issue_id":"LD-05","rule":"Wins with no sql_date/sqo_date counted as reached SQL and SQO","rows_affected":3,"effect_on_clean_view":"+3 SQL and +3 SQO versus counting dates only"},{"issue_id":"LD-04","rule":"Duplicates by contact_email: keep most advanced record, ties to lowest lead_id","rows_affected":36,"effect_on_clean_view":"36 rows excluded; 0 of them had reached SQL; 4 pairs span two campaigns (flagged)"},{"issue_id":"LD-10","rule":"is_icp_size = 1,000+ employees","rows_affected":307,"effect_on_clean_view":"None by default; available as a filter"},{"issue_id":"LD-11","rule":"Government kept as Buyer; Broker / Consultant tagged Influencer","rows_affected":145,"effect_on_clean_view":"None by default; available as a filter"},{"issue_id":"LD-06","rule":"SQL date before MQL date flagged","rows_affected":4,"effect_on_clean_view":""},{"issue_id":"LD-07","rule":"MQL date after 30 Jun 2026 extract flagged","rows_affected":2,"effect_on_clean_view":""},{"issue_id":"LD-08","rule":"Created before FY26 flagged (kept: they MQL'd in the extract)","rows_affected":22,"effect_on_clean_view":""},{"issue_id":"LD-09","rule":"SQL or later with no owner flagged","rows_affected":35,"effect_on_clean_view":""},{"issue_id":"LD-13","rule":"Demandbase leads not flagged Tier 1","rows_affected":4,"effect_on_clean_view":""},{"issue_id":"LD-15","rule":"mql_half and mql_quarter added for cohort reading","rows_affected":0,"effect_on_clean_view":"None; enables mature-cohort view"},{"issue_id":"SP-01","rule":"Second Content Syndication 2025-11 row excluded","rows_affected":1,"effect_on_clean_view":"-$8,125 Syndication spend"},{"issue_id":"SP-02","rule":"Blank Events 2026-03 spend kept blank, not filled","rows_affected":1,"effect_on_clean_view":"Events spend understated; shown as a sensitivity range, not a single figure"},{"issue_id":"LD-19","rule":"Period totals computed for baseline check","rows_affected":0,"effect_on_clean_view":"None; $280K treated as a fixed budget"},{"issue_id":"Attribution","rule":"Single-touch, lead-level credit: each lead counts for the campaign it was assigned to (the form-fill campaign). The extract has no touchpoint history, campaign-member data or opportunity contact roles.","rows_affected":729,"effect_on_clean_view":"None; stated as an assumption. Demandbase cost per SQL is the figure most exposed to it"},{"issue_id":"LD-06","rule":"Negative MQL-to-SQL intervals excluded from cycle-time statistics","rows_affected":4,"effect_on_clean_view":"Cycle-time medians only"}],"prof":{"campaigns":["Q3 Executive Roundtable Series","HLTH 2025 Activation","National Benefits Leadership Summit","FY26 ABM - Tier 1 Target Accounts","FY26 Webinar - AI in Member Experience","FY26 Webinar - Navigating Care Costs","FY26 LI - Total Cost of Care Report","FY26 LI - Retargeting","FY26 LI - Benefits Leader ABM","FY26 Syndication - Buyers Guide (Guaranteed 200)","FY26 GDG - Healthcare Platform (Broad)","FY26 GDG - Benefits Administration"],"campCh":[4,4,4,5,3,3,1,1,1,2,0,0],"regions":["Canada","US - Midwest","US - Northeast","US - Southeast","US - West"],"titles":["Analyst, Benefits","Benefits Manager","CHRO","Consultant","Director Benefits","Director Total Rewards","Health Plan Product Director","SVP Human Resources","VP People Operations","VP Total Rewards"],"rows":[[1,0,4,13,null,null,null,null,1,2],[5,0,9,4,null,null,null,null,0,1],[10,3,7,3,null,null,null,null,1,2],[9,4,5,15,null,null,null,null,1,2],[10,2,9,4,null,null,null,null,0,0],[11,0,3,5,null,null,null,null,1,0],[4,4,6,19,null,null,null,null,0,4],[10,1,2,20,null,null,null,null,1,0],[5,3,9,14,null,null,null,null,1,2],[11,1,4,7,null,null,null,null,0,0],[7,3,6,2,null,null,null,null,1,2],[10,2,5,10,null,null,null,null,0,1],[3,0,0,1,null,null,null,null,1,2],[10,2,8,1,null,null,null,null,1,3],[4,1,8,6,2,null,null,null,1,3],[4,0,3,11,11,null,null,null,1,3],[6,4,8,6,null,null,null,null,0,2],[6,0,4,3,null,null,null,null,1,3],[3,3,1,4,10,null,null,null,1,3],[2,3,0,11,null,null,null,null,1,3],[6,2,7,5,21,null,null,null,1,3],[10,4,3,11,null,null,null,null,1,3],[9,2,0,20,null,null,null,null,0,2],[11,4,1,1,null,null,null,null,1,1],[9,0,8,13,null,null,null,null,0,2],[10,0,7,12,null,null,null,null,0,0],[9,0,3,39,null,null,null,null,0,1],[2,3,4,2,null,null,null,null,0,2],[1,1,9,0,-8,null,null,null,1,3],[9,0,8,4,null,null,null,null,1,1],[10,1,0,8,null,null,null,null,0,1],[11,4,6,0,null,null,null,null,0,4],[9,3,2,19,null,null,null,null,0,1],[10,1,7,5,null,null,null,null,0,1],[8,0,8,0,44,48,null,null,0,2],[5,2,1,15,null,null,null,null,1,0],[5,2,4,10,33,49,92,null,0,4],[8,4,4,2,null,null,null,null,1,4],[7,0,5,18,null,null,null,null,1,3],[5,3,5,6,null,null,null,null,1,2],[10,1,3,16,null,null,null,null,0,0],[7,2,6,14,8,50,90,null,1,1],[9,2,4,1,null,null,null,null,0,1],[9,3,5,7,16,null,null,null,1,3],[8,2,4,2,null,null,null,null,0,1],[11,0,3,9,null,null,null,null,1,1],[10,2,6,12,null,null,null,null,1,1],[10,0,2,2,null,null,null,null,0,0],[9,1,9,12,null,null,null,null,0,2],[9,1,9,20,null,null,null,null,1,0],[0,1,3,3,null,null,null,null,0,1],[11,1,8,10,null,null,null,null,1,0],[5,3,8,9,null,null,null,null,0,3],[10,2,0,6,null,null,null,null,0,1],[7,3,9,17,null,null,null,null,1,4],[11,2,4,13,null,null,null,null,0,1],[8,1,3,20,27,46,141,null,1,2],[10,2,6,9,null,null,null,null,1,2],[11,4,4,7,null,null,null,null,0,1],[9,0,8,8,null,null,null,null,0,3],[6,4,9,13,null,null,null,null,1,4],[7,1,6,6,2,null,null,null,0,1],[10,1,1,10,null,null,null,null,0,1],[10,4,3,17,null,null,null,null,0,4],[11,0,4,5,null,null,null,null,1,0],[11,4,1,3,null,null,null,null,1,2],[9,0,3,19,null,null,null,null,1,0],[9,0,7,0,null,null,null,null,1,2],[10,0,3,19,null,null,null,null,0,2],[8,1,5,12,null,null,null,null,1,3],[10,2,7,0,31,null,null,null,0,0],[9,3,5,10,null,null,null,null,1,1],[6,3,0,10,null,null,null,null,0,3],[8,2,0,12,null,null,null,null,0,2],[1,1,3,9,null,null,null,null,1,2],[9,2,4,8,null,null,null,null,0,1],[10,4,5,0,null,null,null,null,1,2],[6,1,3,9,null,null,null,null,1,4],[9,3,1,2,null,null,null,null,1,2],[2,1,2,20,11,null,null,null,1,2],[3,3,9,14,null,null,null,null,1,3],[11,3,6,5,null,null,null,null,1,0],[11,0,1,14,null,null,null,null,0,1],[11,1,8,11,null,null,null,null,1,0],[4,4,1,13,12,39,null,null,0,2],[8,2,3,18,null,null,null,null,1,3],[5,0,3,11,null,null,null,null,0,3],[7,4,4,2,null,null,null,null,1,2],[8,3,6,19,null,null,null,null,0,1],[5,2,9,20,null,null,null,null,1,2],[10,4,9,9,null,null,null,null,1,0],[3,4,8,12,28,null,null,null,1,4],[8,4,0,3,null,null,null,null,1,1],[4,0,6,6,null,null,null,null,0,4],[9,0,5,4,17,41,null,null,0,0],[8,1,3,13,null,null,null,null,0,2],[8,0,0,12,null,null,null,null,0,1],[5,3,8,17,null,null,null,null,1,1],[9,1,0,3,null,null,null,null,1,2],[10,3,1,13,null,null,null,null,1,0],[10,0,2,11,null,null,null,null,0,0],[6,4,9,8,16,null,null,null,1,3],[10,1,2,20,null,null,null,null,0,1],[4,0,4,20,21,null,null,null,0,2],[9,1,5,6,null,null,null,null,0,3],[9,0,4,11,null,null,null,null,0,0],[5,0,7,10,null,null,null,null,0,2],[10,3,7,15,null,null,null,null,1,3],[0,2,5,14,19,55,68,142,1,1],[9,3,3,7,null,null,null,null,0,0],[9,0,5,16,null,null,null,null,0,0],[10,4,5,0,null,null,null,null,0,0],[5,3,7,9,null,null,null,null,1,3],[6,1,2,19,28,9,125,162,0,2],[9,3,3,4,null,null,null,null,0,2],[10,4,7,12,null,null,null,null,1,0],[6,3,2,9,31,14,null,null,1,2],[10,3,7,2,null,null,null,null,0,4],[8,0,9,5,null,null,null,null,0,2],[11,3,0,19,null,null,null,null,1,0],[10,4,1,9,null,null,null,null,1,3],[5,1,6,10,null,null,null,null,0,1],[4,2,9,9,22,null,null,null,0,2],[6,1,8,15,null,null,null,null,0,0],[10,1,0,3,null,null,null,null,1,1],[8,4,9,14,null,null,null,null,0,3],[8,0,4,24,null,null,null,null,1,2],[4,3,4,15,null,null,null,null,0,3],[9,2,9,11,null,null,null,null,1,2],[7,3,9,10,null,null,null,null,0,2],[11,0,4,11,null,null,null,null,1,0],[4,3,8,11,null,null,null,null,1,3],[10,1,3,9,null,null,null,null,0,0],[10,4,3,0,21,null,null,null,1,0],[11,3,4,12,null,null,null,null,1,1],[9,0,9,9,null,null,null,null,0,4],[10,0,1,2,null,null,null,null,1,2],[10,2,8,4,null,null,null,null,1,1],[10,3,1,3,null,null,null,null,0,1],[11,3,5,4,null,null,null,null,1,1],[10,3,7,11,null,null,null,null,1,0],[9,4,9,4,null,null,null,null,0,0],[0,1,7,0,null,null,null,null,1,2],[4,2,0,13,34,36,null,null,1,2],[5,3,3,13,22,null,null,null,1,2],[10,2,6,19,null,null,null,null,1,3],[10,0,8,18,null,null,null,null,0,1],[10,4,6,0,null,null,null,null,0,1],[5,2,5,5,33,null,null,null,0,3],[10,3,0,15,null,null,null,null,1,0],[2,3,5,8,null,null,null,null,1,2],[8,2,8,18,null,null,null,null,0,0],[9,1,7,1,null,null,null,null,0,3],[3,0,0,21,24,25,97,null,1,4],[11,4,4,0,9,null,null,null,1,0],[1,3,2,2,null,null,null,null,1,3],[9,3,5,3,null,null,null,null,0,4],[10,2,4,11,null,null,null,null,1,0],[5,2,9,10,null,null,null,null,1,0],[9,2,0,15,null,null,null,null,1,2],[7,2,9,5,null,null,null,null,0,2],[6,1,0,2,null,null,null,null,0,2],[9,1,3,20,null,null,null,null,1,0],[11,1,9,20,null,null,null,null,1,1],[1,4,4,2,null,null,null,null,1,3],[10,0,7,4,null,null,null,null,1,0],[10,0,7,1,null,null,null,null,0,0],[5,2,6,12,null,null,null,null,0,4],[11,2,1,12,null,null,null,null,0,0],[8,2,3,3,null,null,null,null,1,2],[10,1,6,2,null,null,null,null,0,3],[6,4,9,0,null,null,null,null,0,4],[1,4,1,9,36,58,null,null,0,4],[11,2,2,3,null,null,null,null,1,0],[9,3,6,12,null,null,null,null,0,1],[5,0,4,3,null,null,null,null,1,1],[9,4,0,5,38,null,null,null,0,2],[5,3,5,14,null,null,null,null,1,4],[5,4,8,4,null,null,null,null,0,4],[1,3,5,11,7,25,null,null,1,2],[6,3,3,15,15,49,null,null,1,3],[8,1,7,17,null,null,null,null,1,2],[9,0,8,2,null,null,null,null,0,0],[3,2,2,1,null,null,null,null,1,4],[7,1,3,21,null,null,null,null,1,1],[9,3,1,12,null,null,null,null,0,2],[6,3,5,3,null,null,null,null,1,3],[8,4,1,15,36,null,null,null,1,4],[4,4,5,11,null,null,null,null,0,3],[10,2,2,19,null,null,null,null,1,0],[11,2,8,18,null,null,null,null,0,4],[10,4,9,1,null,null,null,null,0,1],[11,0,1,20,null,null,null,null,0,1],[6,2,8,5,null,null,null,null,1,3],[6,4,5,21,21,null,null,null,0,3],[9,3,6,38,null,null,null,null,0,0],[9,3,2,2,null,null,null,null,0,0],[9,4,0,16,null,null,null,null,1,0],[8,2,4,3,null,null,null,null,1,1],[0,1,9,20,null,null,null,null,0,3],[10,2,0,14,null,null,null,null,1,0],[6,4,1,3,16,45,97,158,0,1],[11,4,0,18,null,null,null,null,1,0],[11,3,2,3,null,null,null,null,1,0],[5,0,7,3,null,null,null,null,0,3],[8,4,0,13,23,null,null,null,0,2],[11,2,9,1,null,null,null,null,1,0],[10,1,1,7,null,null,null,null,1,0],[9,4,1,7,null,null,null,null,0,0],[8,3,0,8,null,null,null,null,0,4],[9,2,0,12,null,null,null,null,0,1],[9,1,4,1,10,40,143,null,0,1],[10,3,2,7,null,null,null,null,0,1],[11,4,8,12,null,null,null,null,0,1],[6,2,5,13,null,null,null,null,1,0],[9,3,1,41,null,null,null,null,0,2],[7,0,3,10,null,null,null,null,0,2],[10,2,9,12,null,null,null,null,1,0],[11,1,3,11,null,null,null,null,0,2],[9,1,8,12,null,null,null,null,0,0],[10,1,0,12,null,null,null,null,0,1],[6,3,7,2,null,null,null,null,0,4],[9,0,6,1,null,null,null,null,0,1],[10,2,0,7,null,null,null,null,1,1],[7,1,6,6,null,null,null,null,1,2],[6,2,5,5,null,null,null,null,0,3],[10,2,0,0,null,null,null,null,1,0],[6,4,9,40,null,null,null,null,1,3],[10,4,8,8,null,null,null,null,0,2],[9,4,7,14,null,null,null,null,1,1],[9,0,3,14,null,null,null,null,0,1],[10,4,3,18,null,null,null,null,0,1],[11,1,1,6,null,null,null,null,1,2],[9,3,9,6,null,null,null,null,0,3],[10,0,3,15,null,null,null,null,1,4],[7,1,9,9,null,null,null,null,0,3],[0,4,8,21,17,null,null,null,1,3],[9,0,8,23,null,null,null,null,1,3],[8,1,5,13,null,null,null,null,0,3],[10,0,1,5,null,null,null,null,0,0],[11,4,4,7,null,null,null,null,1,0],[9,4,2,44,null,null,null,null,1,2],[11,2,7,6,null,null,null,null,1,1],[9,2,3,46,null,null,null,null,1,1],[5,2,4,21,36,46,97,null,0,3],[11,4,2,16,null,null,null,null,0,1],[10,0,9,5,null,null,null,null,0,0],[9,1,3,21,null,null,null,null,0,4],[10,2,0,0,null,null,null,null,0,1],[2,3,4,6,null,null,null,null,1,4],[3,0,4,1,null,null,null,null,1,4],[8,4,7,8,24,51,null,null,0,4],[9,4,3,4,null,null,null,null,0,2],[11,1,5,12,null,null,null,null,0,1],[10,3,3,9,null,null,null,null,0,0],[7,3,9,12,null,null,null,null,0,2],[10,2,8,21,null,null,null,null,0,0],[9,2,1,8,24,null,null,null,0,4],[6,4,9,4,null,null,null,null,1,1],[7,4,4,18,null,null,null,null,1,1],[11,1,0,1,null,null,null,null,1,3],[9,4,9,18,null,null,null,null,0,2],[5,0,8,15,18,53,null,null,1,3],[7,4,7,21,13,null,null,null,0,3],[11,2,1,2,null,null,null,null,0,1],[11,0,7,13,null,null,null,null,0,1],[4,2,6,18,null,null,null,null,0,3],[7,4,1,8,null,null,null,null,1,2],[8,2,0,48,null,null,null,null,0,2],[3,3,8,10,null,null,null,null,1,3],[10,0,7,9,null,null,null,null,0,0],[9,4,4,2,null,null,null,null,0,1],[9,1,6,12,16,null,null,null,0,1],[0,2,6,16,null,null,null,null,1,2],[10,0,6,4,null,null,null,null,1,1],[9,3,4,20,null,null,null,null,0,2],[9,2,5,14,null,null,null,null,1,0],[11,2,5,8,null,null,null,null,1,2],[4,2,3,15,null,null,null,null,1,3],[6,4,7,20,12,null,null,null,0,2],[9,2,9,3,null,null,null,null,1,0],[11,4,5,16,null,null,null,null,0,0],[6,2,5,20,null,null,null,null,0,2],[10,1,0,13,null,null,null,null,0,0],[11,0,8,9,null,null,null,null,1,1],[0,1,5,15,11,32,116,159,1,3],[7,3,5,16,26,null,null,null,0,2],[7,1,2,5,null,null,null,null,0,3],[9,4,1,4,null,null,null,null,1,2],[10,0,2,7,null,null,null,null,0,1],[10,1,7,20,null,null,null,null,1,0],[7,1,3,5,null,null,null,null,0,2],[10,0,0,3,null,null,null,null,1,0],[0,0,7,2,null,null,null,null,1,4],[10,0,6,16,null,null,null,null,0,0],[9,3,8,14,null,null,null,null,0,1],[9,3,1,3,null,null,null,null,0,2],[6,0,2,13,null,null,null,null,0,2],[9,0,2,11,18,null,null,null,1,4],[7,0,3,12,null,null,null,null,1,0],[5,1,9,19,null,null,null,null,0,2],[9,1,7,21,null,null,null,null,0,4],[11,0,0,20,null,null,null,null,1,2],[4,2,0,11,null,null,null,null,1,2],[3,1,2,6,null,null,null,null,1,4],[7,0,4,8,null,null,null,null,1,2],[11,1,3,16,null,null,null,null,1,0],[3,1,8,12,null,null,null,null,1,4],[10,0,5,13,null,null,null,null,1,1],[10,0,3,2,null,null,null,null,1,0],[10,0,6,15,null,null,null,null,1,2],[2,4,6,14,null,null,null,null,1,3],[9,3,2,4,null,null,null,null,0,1],[11,0,6,19,null,null,null,null,0,4],[9,4,2,9,26,null,null,null,0,0],[9,0,9,2,null,null,null,null,1,3],[9,2,8,12,null,null,null,null,1,2],[5,4,0,13,36,45,107,188,1,2],[11,0,3,0,null,null,null,null,1,0],[8,2,0,21,null,null,null,null,0,1],[6,3,7,8,null,null,null,null,1,2],[8,4,2,7,null,null,null,null,0,3],[9,0,7,20,null,null,null,null,0,2],[10,3,3,1,null,null,null,null,0,4],[6,2,9,0,null,null,null,null,1,0],[9,2,3,8,null,null,null,null,1,1],[9,0,6,2,null,null,null,null,1,1],[7,4,7,13,null,null,null,null,0,3],[8,4,6,9,null,null,null,null,0,3],[7,4,1,8,null,null,null,null,1,2],[11,1,2,20,null,null,null,null,0,0],[9,0,0,20,null,null,null,null,1,0],[7,2,8,9,null,null,null,null,0,4],[9,3,7,10,null,null,null,null,1,1],[10,4,8,6,null,null,null,null,0,0],[2,2,5,14,null,null,null,205,1,2],[10,0,4,20,null,null,null,null,1,1],[10,1,1,4,null,null,null,null,0,0],[10,3,8,3,null,null,null,null,0,1],[11,3,4,5,null,null,null,null,0,4],[2,0,7,11,null,null,null,null,1,2],[9,4,2,9,null,null,null,null,1,2],[4,0,9,10,null,null,null,null,0,2],[9,1,0,14,null,null,null,null,1,1],[11,4,8,8,null,null,null,null,1,3],[10,0,6,8,null,null,null,null,0,2],[0,4,4,21,11,null,null,null,1,2],[11,0,6,12,null,null,null,null,1,1],[8,0,7,15,null,null,null,null,0,2],[5,0,2,7,null,null,null,null,0,4],[8,3,9,20,-1,95,115,209,1,2],[10,3,2,15,null,null,null,null,1,0],[9,4,0,8,null,null,null,null,0,2],[11,1,2,10,null,null,null,null,0,3],[7,4,1,5,null,null,null,null,1,4],[10,2,1,9,null,null,null,null,0,0],[7,3,8,11,29,40,null,null,0,3],[8,4,2,16,null,null,null,null,0,2],[9,4,2,3,null,null,null,null,0,2],[9,1,8,7,null,null,null,null,0,2],[7,1,8,18,null,null,null,null,1,1],[10,3,9,2,null,null,null,null,0,2],[3,1,0,5,null,null,null,null,1,4],[8,0,6,10,null,null,null,null,0,4],[4,1,6,8,24,null,null,null,1,2],[10,2,9,17,null,null,null,null,0,1],[9,2,3,4,null,null,null,null,1,4],[8,0,0,3,null,null,null,null,1,2],[1,3,5,3,null,null,null,null,1,3],[0,4,1,11,null,null,null,null,1,2],[10,4,8,18,null,null,null,null,0,4],[10,2,0,9,null,null,null,null,1,1],[10,4,8,8,null,null,null,null,1,1],[1,1,2,3,null,null,null,null,1,3],[5,3,7,3,null,null,null,null,1,2],[9,4,3,21,null,null,null,null,0,3],[9,3,6,6,null,null,null,null,0,0],[11,2,6,8,null,null,null,null,1,0],[3,2,3,2,23,null,null,null,1,2],[11,0,6,5,null,null,null,null,0,1],[0,3,0,17,null,null,null,null,1,3],[3,3,3,18,null,null,null,null,1,3],[10,0,0,2,null,null,null,null,0,0],[9,3,5,36,null,null,null,null,0,4],[10,1,2,4,null,null,null,null,0,0],[5,4,1,7,54,null,null,null,1,3],[10,1,1,33,null,null,null,null,1,3],[3,0,9,7,null,null,null,null,1,2],[10,1,8,1,null,null,null,null,0,1],[5,2,8,19,null,null,null,null,0,2],[11,2,6,4,null,null,null,null,0,0],[9,3,9,14,null,null,null,null,0,2],[4,4,8,14,null,null,null,null,1,0],[7,2,9,5,null,null,null,null,1,3],[9,2,2,20,null,null,null,null,1,1],[6,1,2,10,null,null,null,null,1,2],[5,1,5,3,38,58,80,176,0,2],[10,4,6,0,null,null,null,null,1,0],[5,4,5,11,null,null,null,null,0,3],[9,1,0,16,null,null,null,null,0,2],[9,1,8,18,null,null,null,null,1,4],[5,1,4,2,null,null,null,null,1,4],[3,3,7,20,null,null,null,null,1,4],[5,4,9,4,null,null,null,null,0,3],[3,1,1,13,20,40,119,179,1,3],[10,1,1,18,null,null,null,null,1,3],[5,2,0,11,null,null,null,null,0,2],[4,1,9,15,34,20,null,null,1,1],[6,3,4,16,null,null,null,null,0,2],[9,1,8,5,null,null,null,null,1,2],[9,4,2,5,null,null,null,null,1,4],[6,2,5,21,30,51,null,null,1,2],[9,4,3,4,null,null,null,null,1,3],[8,0,5,3,null,null,null,null,1,4],[9,2,2,16,null,null,null,null,0,4],[5,1,7,7,null,null,null,null,0,3],[9,2,5,21,null,null,null,null,1,2],[9,1,5,8,null,null,null,null,0,1],[4,4,5,9,null,null,null,null,0,2],[3,0,4,10,null,null,null,null,1,3],[9,4,8,21,null,null,null,null,0,1],[9,4,2,25,null,null,null,null,0,0],[7,4,4,2,null,null,null,null,0,2],[9,1,0,10,null,null,null,null,0,4],[11,1,6,6,null,null,null,null,0,0],[9,3,3,10,null,null,null,null,0,0],[5,1,5,7,null,null,null,null,1,3],[10,0,8,5,null,null,null,null,1,4],[10,4,9,19,null,null,null,null,0,2],[7,0,8,15,null,null,null,null,0,3],[11,0,7,6,null,null,null,null,0,0],[3,1,4,2,null,null,null,null,1,2],[10,0,0,7,null,null,null,null,1,0],[11,2,4,12,null,null,null,null,1,3],[4,0,9,0,null,null,null,null,1,4],[8,1,7,19,27,null,null,null,1,2],[9,1,3,28,null,null,null,null,1,0],[7,2,9,19,36,null,null,null,1,3],[9,0,9,1,null,null,null,null,1,1],[9,0,8,14,null,null,null,null,0,1],[8,0,4,4,null,null,null,null,0,2],[9,0,8,19,null,null,null,null,0,3],[9,3,1,2,null,null,null,null,1,2],[10,4,5,13,null,null,null,null,0,0],[9,4,3,2,null,null,null,null,1,3],[11,4,3,17,null,null,null,null,1,4],[9,0,5,17,null,null,null,null,0,0],[8,0,0,0,null,null,null,null,0,2],[6,3,4,10,null,null,null,null,1,0],[11,3,7,19,null,null,null,null,1,0],[0,1,6,21,23,38,85,146,0,3],[6,0,6,5,null,null,null,null,1,4],[10,0,1,20,null,null,null,null,0,1],[8,3,7,7,null,null,null,null,0,3],[7,2,9,20,-4,61,null,null,0,2],[6,2,5,4,26,11,184,221,1,2],[11,0,7,21,null,null,null,null,0,1],[4,2,7,15,null,null,null,null,0,3],[10,0,2,1,null,null,null,null,1,3],[10,4,2,10,null,null,null,null,1,0],[10,3,5,12,null,null,null,null,0,3],[8,1,9,21,null,null,null,null,1,3],[10,3,9,3,null,null,null,null,1,2],[5,2,5,10,21,30,52,103,1,3],[3,1,8,1,null,null,null,null,1,4],[8,1,1,7,null,null,null,null,1,4],[11,4,8,18,null,null,null,null,0,1],[5,4,2,12,null,null,null,null,1,3],[9,2,9,15,null,null,null,null,0,2],[0,4,2,5,null,null,null,null,1,2],[4,3,5,15,null,null,null,null,0,2],[10,3,5,16,null,null,null,null,1,1],[10,0,4,4,null,null,null,null,1,1],[11,3,5,20,null,null,null,null,1,2],[10,4,9,12,null,null,null,null,1,2],[7,1,0,3,null,null,null,null,0,2],[6,4,5,0,null,null,null,null,1,3],[10,1,6,17,null,null,null,null,1,0],[7,4,3,7,null,null,null,null,0,2],[10,4,4,19,null,null,null,null,1,2],[11,1,2,20,null,null,null,null,0,1],[9,2,0,19,null,null,null,null,0,0],[4,4,3,6,null,null,null,null,1,3],[9,2,1,3,null,null,null,null,0,2],[5,3,9,21,null,null,null,null,0,4],[11,1,1,13,null,null,null,null,1,1],[8,4,2,18,null,null,null,null,0,0],[10,3,3,20,null,null,null,null,0,0],[5,3,8,18,20,null,null,null,1,3],[11,2,0,7,null,null,null,null,0,0],[9,1,0,10,null,null,null,null,1,1],[5,0,2,1,null,null,null,null,0,2],[1,0,5,12,null,null,null,null,1,3],[9,2,4,31,null,null,null,null,0,2],[11,4,8,9,null,null,null,null,1,3],[9,1,5,20,null,null,null,null,0,2],[10,0,3,20,null,null,null,null,1,1],[9,0,1,21,43,19,100,null,0,2],[10,1,7,16,null,null,null,null,1,0],[3,4,8,7,null,null,null,null,0,2],[9,4,0,20,null,null,null,null,1,2],[5,3,0,0,11,null,null,null,0,4],[8,0,3,14,null,null,null,null,0,3],[5,3,5,6,null,null,null,null,0,3],[9,4,6,11,41,null,null,null,0,2],[7,4,3,10,null,null,null,null,0,2],[0,2,3,9,17,24,null,null,1,4],[9,2,5,9,null,null,null,null,0,2],[10,4,1,17,15,null,null,null,1,0],[11,1,3,7,null,null,null,null,1,3],[2,1,4,15,null,null,null,null,1,4],[9,0,8,5,null,null,null,null,1,3],[9,3,8,46,null,null,null,null,1,1],[4,0,5,3,null,null,null,null,0,3],[4,4,0,18,11,null,null,null,0,4],[9,1,1,3,null,null,null,null,1,3],[4,4,4,19,null,null,null,null,1,2],[8,4,5,19,null,null,null,null,0,3],[10,1,1,14,null,null,null,null,0,4],[9,1,8,4,null,null,null,null,1,3],[3,0,5,15,null,null,null,null,1,2],[6,3,2,11,null,null,null,null,0,2],[8,4,6,11,null,null,null,null,0,2],[8,2,8,15,null,null,null,null,0,4],[7,1,4,7,22,61,null,null,0,2],[10,2,4,14,null,null,null,null,0,2],[9,2,2,6,null,null,null,null,1,2],[0,4,1,15,null,null,null,null,1,3],[9,4,7,10,null,null,null,null,1,2],[8,3,1,12,21,26,null,null,1,3],[3,1,1,18,28,29,139,196,0,2],[3,1,9,12,null,null,null,null,1,2],[11,1,0,3,null,null,null,null,1,1],[10,3,9,1,null,null,null,null,1,0],[10,1,8,20,null,null,null,null,0,2],[9,3,1,11,null,null,null,null,0,1],[10,3,9,15,null,null,null,null,1,1],[7,2,7,0,null,null,null,null,1,4],[9,0,7,14,null,null,null,null,0,3],[9,0,0,21,null,null,null,null,0,1],[5,0,0,18,null,null,null,null,0,3],[4,2,3,16,null,null,null,null,1,2],[9,0,0,48,null,null,null,null,0,4],[3,2,9,16,10,53,null,null,1,3],[5,3,8,16,null,null,null,null,0,2],[9,2,6,17,null,null,null,null,1,2],[11,3,8,20,null,null,null,null,0,3],[5,2,3,2,null,null,null,null,1,3],[9,0,0,16,null,null,null,null,0,2],[10,1,1,0,null,null,null,null,0,0],[11,4,7,16,null,null,null,null,1,0],[8,3,1,0,null,null,null,null,0,4],[9,4,0,37,null,null,null,null,0,1],[8,0,9,0,null,null,null,null,1,0],[8,3,0,19,null,null,null,null,0,4],[7,1,4,33,null,null,null,null,0,2],[6,1,6,6,16,null,null,null,1,4],[7,2,1,21,null,null,null,null,0,3],[8,2,8,0,null,null,null,null,0,1],[9,0,0,19,null,null,null,null,0,4],[9,0,9,12,null,null,null,null,0,3],[10,1,5,3,null,null,null,null,0,1],[11,1,6,10,null,null,null,null,0,2],[9,3,1,16,40,null,null,null,0,2],[10,3,8,9,null,null,null,null,0,2],[9,1,0,22,null,null,null,null,0,4],[9,2,3,16,null,null,null,null,1,0],[6,0,1,12,null,null,null,null,0,3],[9,2,0,18,null,null,null,null,1,2],[3,3,9,12,null,null,null,null,1,2],[8,0,8,5,null,null,null,null,1,2],[10,2,4,12,null,null,null,null,1,1],[10,4,7,8,null,null,null,null,0,3],[6,3,1,11,null,null,null,null,1,4],[4,3,3,1,null,null,null,null,0,3],[10,2,0,1,null,null,null,null,0,1],[11,1,6,2,null,null,null,null,1,0],[11,3,7,2,null,null,null,null,1,2],[9,2,7,11,null,null,null,null,0,4],[11,0,9,2,null,null,null,null,0,3],[10,4,1,20,null,null,null,null,1,0],[10,4,0,7,null,null,null,null,1,1],[11,1,4,14,null,null,null,null,0,0],[9,1,2,7,null,null,null,null,1,4],[11,0,7,1,null,null,null,null,0,0],[6,4,8,4,null,null,null,null,1,1],[5,4,1,9,29,20,null,null,0,3],[3,0,2,1,null,null,null,129,1,2],[9,2,3,10,43,null,null,null,0,3],[10,1,3,5,null,null,null,null,1,3],[11,2,8,8,null,null,null,null,1,0],[8,0,4,0,null,null,null,null,1,3],[9,2,8,6,null,null,null,null,0,2],[5,2,7,2,null,null,null,null,1,1],[10,2,2,19,null,null,null,null,0,0],[11,2,0,15,null,null,null,null,1,1],[9,3,0,2,19,32,142,193,0,3],[11,2,9,6,null,null,null,null,0,2],[8,3,9,4,null,null,null,null,0,2],[10,3,7,1,null,null,null,null,1,2],[7,2,6,8,16,null,null,null,1,1],[3,2,6,16,null,null,null,null,1,3],[10,0,3,12,null,null,null,null,1,1],[9,4,6,0,null,null,null,null,1,3],[10,1,0,19,null,null,null,null,0,0],[1,0,1,5,21,null,null,null,1,3],[11,2,8,12,null,null,null,null,1,3],[10,1,5,16,null,null,null,null,0,1],[1,3,7,12,26,47,null,null,1,3],[9,2,1,22,null,null,null,null,0,4],[6,0,9,19,null,null,null,null,1,0],[11,1,7,15,null,null,null,null,0,4],[3,4,2,12,null,null,null,null,1,4],[11,2,1,14,null,null,null,null,1,1],[7,1,7,11,null,null,null,null,1,3],[10,0,4,2,null,null,null,null,1,2],[10,4,8,21,null,null,null,null,0,1],[10,0,8,14,null,null,null,null,1,0],[9,3,7,1,null,null,null,null,0,1],[4,3,4,19,null,null,null,null,1,3],[4,0,0,19,null,null,null,null,1,3],[6,3,2,13,17,null,null,null,0,2],[6,3,6,21,null,null,null,null,0,2],[9,1,5,21,null,null,null,null,1,0],[8,0,4,9,null,null,null,null,1,2],[9,2,9,9,null,null,null,null,1,0],[5,1,6,11,null,null,null,null,0,3],[9,3,4,20,null,null,null,null,1,1],[10,2,9,15,null,null,null,null,0,1],[4,4,5,20,null,null,null,140,0,3],[10,2,2,14,null,null,null,null,0,0],[11,1,1,16,null,null,null,null,1,0],[6,0,0,3,null,null,null,null,1,1],[9,3,4,11,null,null,null,null,0,1],[9,4,3,18,null,null,null,null,1,3],[10,0,8,10,null,null,null,null,0,4],[10,1,2,13,null,null,null,null,1,0],[9,0,2,10,null,null,null,null,1,2],[9,4,2,4,null,null,null,null,0,4],[9,0,8,4,null,null,null,null,1,2],[9,4,9,21,null,null,null,null,0,1],[11,3,3,21,null,null,null,null,0,2],[9,2,4,18,null,null,null,null,0,2],[9,4,8,21,null,null,null,null,1,1],[11,4,6,20,null,null,null,null,0,1],[11,4,7,3,null,null,null,null,1,0],[9,0,5,7,null,null,null,null,1,0],[9,2,9,17,null,null,null,null,0,0],[4,0,4,10,null,null,null,null,1,4],[11,4,8,19,null,null,null,null,0,1],[10,0,8,7,null,null,null,null,1,3],[6,4,7,11,null,null,null,null,0,2],[4,3,4,2,null,null,null,null,1,3],[9,4,0,14,null,null,null,null,0,2],[4,3,4,51,null,null,null,null,0,3],[3,0,1,4,11,47,132,null,1,4],[9,1,2,7,null,null,null,null,1,1],[10,0,3,8,null,null,null,null,0,2],[10,2,5,19,null,null,null,null,0,0],[9,4,8,1,null,null,null,null,0,2],[10,4,5,11,null,null,null,null,0,1],[10,2,1,5,null,null,null,null,1,0],[9,4,6,6,null,null,null,null,1,1],[9,0,2,0,null,null,null,null,0,1],[11,3,4,8,null,null,null,null,0,2],[11,3,8,2,null,null,null,null,1,1],[10,2,6,3,null,null,null,null,1,3],[11,2,4,1,null,null,null,null,1,3],[10,2,1,4,null,null,null,null,0,0],[1,3,6,2,null,null,null,null,1,4],[3,4,5,9,32,null,null,null,1,2],[9,4,0,14,null,null,null,null,0,4],[11,3,1,13,-3,52,null,null,1,1],[7,0,7,5,null,null,null,null,0,3],[9,3,9,21,null,null,null,null,1,1],[11,1,8,18,null,null,null,null,0,1],[9,0,8,27,null,null,null,null,0,1],[11,4,3,0,null,null,null,null,0,3],[7,1,1,13,48,null,null,null,0,3],[10,1,2,12,null,null,null,null,0,2],[1,1,0,1,19,null,null,null,1,4],[3,3,7,18,null,null,null,null,1,4],[5,0,2,16,null,null,null,null,1,2],[11,0,2,2,null,null,null,null,0,0],[7,1,9,8,null,null,null,null,1,0],[10,0,4,8,null,null,null,null,0,2],[11,4,8,19,null,null,null,null,0,0],[9,0,9,5,null,null,null,null,0,1],[9,0,8,11,null,null,null,null,1,1],[9,3,3,9,null,null,null,null,1,2],[8,0,7,6,null,null,null,null,1,3],[6,1,1,12,null,null,null,null,1,3],[7,3,5,19,null,null,null,null,0,1],[11,2,9,19,null,null,null,null,0,0],[11,0,5,3,null,null,null,null,0,0],[10,4,9,18,null,null,null,null,1,0],[10,2,6,20,null,null,null,null,0,3],[5,2,0,12,20,37,96,null,1,4],[7,4,6,0,null,null,null,null,1,2],[10,2,3,0,null,null,null,null,0,0],[9,2,3,15,null,null,null,null,1,4],[8,1,6,12,null,null,null,null,0,4],[5,0,2,13,null,null,null,null,0,3],[0,4,5,6,8,3,148,null,1,3],[10,0,0,3,null,null,null,null,0,1],[7,1,5,3,null,null,null,null,0,2],[9,2,3,19,null,null,null,null,0,2],[10,4,7,16,null,null,null,null,1,1],[9,1,6,18,null,null,null,null,0,3],[11,4,8,13,null,null,null,null,1,0],[10,2,4,12,null,null,null,null,1,0],[9,4,7,5,null,null,null,null,0,1],[4,0,1,12,null,null,null,null,0,3],[11,1,5,13,null,null,null,null,0,0],[0,0,0,8,29,19,null,null,1,4],[2,2,4,10,30,20,null,null,0,4],[11,3,0,20,null,null,null,null,0,1],[9,4,2,21,43,27,null,null,0,1],[9,0,6,1,20,null,null,null,1,0],[6,3,2,18,null,null,null,null,0,2],[9,3,8,21,null,null,null,null,1,1],[10,3,2,2,null,null,null,null,0,2],[9,2,0,53,null,null,null,null,1,2],[6,2,8,18,null,null,null,null,1,2],[5,4,9,18,null,null,null,null,1,3],[10,1,4,4,null,null,null,null,1,1],[3,4,2,8,23,null,null,null,1,4],[10,4,1,9,29,21,null,null,0,2],[4,1,6,0,48,null,null,null,0,3],[11,3,4,6,null,null,null,null,1,0],[10,3,1,8,null,null,null,null,1,1],[11,1,8,6,null,null,null,null,1,2],[5,0,1,16,null,null,null,null,0,3],[4,3,2,12,null,null,null,null,1,1],[9,2,8,5,null,null,null,null,1,1],[8,4,9,20,null,null,null,null,0,1],[11,0,5,1,null,null,null,null,1,4],[10,1,5,17,null,null,null,null,1,1],[3,4,5,6,null,null,null,null,1,3],[11,4,5,11,null,null,null,null,0,0],[9,1,1,0,null,null,null,null,1,1],[10,4,4,19,null,null,null,null,1,1],[1,2,3,0,null,null,null,null,1,3],[11,4,7,8,null,null,null,null,0,1],[10,2,9,15,null,null,null,null,0,2],[11,4,9,7,null,null,null,null,1,2],[6,1,1,7,null,null,null,null,0,2],[7,4,0,12,null,null,null,null,0,2],[7,0,4,13,null,null,null,null,1,2],[6,0,0,15,40,null,null,null,1,4],[5,2,0,16,null,null,null,null,1,3],[11,1,9,17,null,null,null,null,1,1],[9,0,0,51,null,null,null,null,0,1],[8,1,9,0,null,null,null,null,1,3],[3,4,1,0,29,61,null,null,0,4],[9,3,0,1,null,null,null,null,1,4],[11,0,7,15,null,null,null,null,0,1],[9,4,0,20,null,null,null,null,0,1],[10,3,3,8,null,null,null,null,1,0],[1,0,6,19,null,null,null,null,1,4],[3,3,7,1,null,null,null,null,0,2],[6,3,8,6,null,null,null,null,0,1],[10,1,8,12,null,null,null,null,0,0],[9,4,6,7,null,null,null,null,1,3],[11,0,0,2,null,null,null,null,1,1]],"bands":["<200","200-999","1,000-4,999","5,000-19,999","20,000+"]}};
+const LOST = {"reasons":{"Not a fit - company size":4,"Timing - revisit FY27":2,"No decision / stalled":2,"Lost to competitor":1,"No budget":1},"bysize":[["200-999",2,2],["1,000-4,999",8,2],["5,000-19,999",6,2],["20,000+",0,4]],"byseg":[["Health Plan",4,0],["Provider System",5,2],["Large Employer",5,4],["Government",1,3],["Broker / Consultant",1,1]],"deals":[["LinkedIn","Broker / Consultant","1,000-4,999","Lost to competitor","M. Okonkwo",141],["Demandbase","Provider System","20,000+","No budget","S. Deshpande",97],["Content Syndication","Government","1,000-4,999","No decision / stalled","S. Deshpande",100],["Webinars","Government","20,000+","No decision / stalled","Unassigned",96],["Webinars","Large Employer","20,000+","Not a fit - company size","Unassigned",92],["Content Syndication","Provider System","200-999","Not a fit - company size","Unassigned",143],["Demandbase","Large Employer","20,000+","Not a fit - company size","J. Fairbanks",132],["Events","Large Employer","5,000-19,999","Not a fit - company size","Unassigned",148],["LinkedIn","Large Employer","200-999","Timing - revisit FY27","J. Fairbanks",90],["Webinars","Government","5,000-19,999","Timing - revisit FY27","M. Okonkwo",97]],"won":16,"lost":10,"open_sqo":26,"won_unassigned":7,"lost_unassigned":4,"med_days_won":115.0,"med_days_lost":98.5};
+const CH = D.channels;
+const UNATTR = 'Unattributed';
+const S = { view: 'clean', icp: 'all', seg: 'all', cohort: 'all', sortKey: 'cpsql', sortDir: 1 };
+try { const saved = JSON.parse(localStorage.getItem('league-funnel-state') || 'null'); if (saved) Object.assign(S, saved); } catch (e) {}
+
+const fmt$ = v => '$' + Math.round(v).toLocaleString('en-US');
+const fmtK = v => v >= 1e6 ? '$' + (v / 1e6).toFixed(2) + 'M' : v >= 1000 ? '$' + (v / 1000).toFixed(1) + 'K' : '$' + Math.round(v);
+const fmtN = v => v.toLocaleString('en-US');
+const pct = (a, b) => b ? (100 * a / b).toFixed(1) + '%' : '–';
+
+function compute(view, st) {
+  const names = view === 'raw' ? CH.concat([UNATTR]) : CH.slice();
+  const rows = {};
+  names.forEach(n => rows[n] = { ch: n, mql: 0, sql: 0, sqo: 0, won: 0, acv: 0, icp: 0, spend: null });
+  for (const r of D.leads) {
+    const [rc, cc, rs, cs, dup, icp, inf, half, acv] = r;
+    if (view === 'clean' && dup) continue;
+    if (st.icp === 'icp' && !icp) continue;
+    if (st.seg === 'buyers' && inf) continue;
+    if (st.cohort === 'h1' && half !== 0) continue;
+    if (st.cohort === 'h2' && half !== 1) continue;
+    const name = view === 'raw' ? (rc === 6 ? UNATTR : CH[rc]) : CH[cc];
+    const s = view === 'raw' ? rs : cs;
+    const o = rows[name];
+    o.mql++; if (icp) o.icp++;
+    if (s >= 1) o.sql++;
+    if (s >= 2) o.sqo++;
+    if (s === 3) { o.won++; o.acv += acv; }
+  }
+  for (const n of CH) {
+    const [h1, h2] = D.spend[view][n];
+    rows[n].spend = st.cohort === 'h1' ? h1 : st.cohort === 'h2' ? h2 : h1 + h2;
+  }
+  const list = names.map(n => rows[n]);
+  for (const o of list) {
+    o.cpmql = o.spend != null && o.mql ? o.spend / o.mql : null;
+    o.cpsql = o.spend != null && o.sql ? o.spend / o.sql : null;
+    o.cpsqo = o.spend != null && o.sqo ? o.spend / o.sqo : null;
+    o.r1 = o.mql ? o.sql / o.mql : null;
+    o.r2 = o.sql ? o.sqo / o.sql : null;
+    o.r3 = o.sqo ? o.won / o.sqo : null;
+    o.cac = o.spend != null && o.won ? o.spend / o.won : null;
+    o.acvper = o.spend ? o.acv / o.spend : null;
+    o.icpshare = o.mql ? o.icp / o.mql : null;
+  }
+  const t = list.reduce((a, o) => { a.mql += o.mql; a.sql += o.sql; a.sqo += o.sqo; a.won += o.won; a.acv += o.acv; a.icp += o.icp; a.spend += (o.spend || 0); return a; }, { mql: 0, sql: 0, sqo: 0, won: 0, acv: 0, icp: 0, spend: 0 });
+  t.cpmql = t.spend / t.mql; t.cpsql = t.sql ? t.spend / t.sql : null; t.cpsqo = t.sqo ? t.spend / t.sqo : null;
+  t.r1 = t.sql / t.mql; t.r2 = t.sql ? t.sqo / t.sql : null; t.r3 = t.sqo ? t.won / t.sqo : null; t.r4 = t.won / t.mql; t.cac = t.won ? t.spend / t.won : null; t.acvper = t.acv / t.spend; t.icpshare = t.icp / t.mql;
+  return { list, t };
+}
+
+// Events March 2026 spend is missing (SP-02): months of Events spend actually recorded in the cohort window.
+function eventsMonths(st) { return st.cohort === 'h1' ? 6 : st.cohort === 'h2' ? 5 : 11; }
+function eventsMissing(st) { return st.cohort !== 'h1'; }
+
+const tip = document.getElementById('tip');
+function showTip(e, html) { tip.innerHTML = html; tip.hidden = false; moveTip(e); }
+function moveTip(e) {
+  const x = e.clientX ?? (e.target.getBoundingClientRect().right), y = e.clientY ?? (e.target.getBoundingClientRect().top);
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = Math.min(window.innerWidth - w - 8, x + 12) + 'px';
+  tip.style.top = Math.max(8, y - h - 10) + 'px';
+}
+function hideTip() { tip.hidden = true; }
+
+function renderTiles(cur, other) {
+  const otherName = S.view === 'clean' ? 'As delivered' : 'Cleaned';
+  const P = v => v == null ? '–' : (100 * v).toFixed(1) + '%';
+  const K = v => v == null ? '–' : fmtK(v);
+  const a = cur.t, b = other.t;
+  const groups = [
+    ['Volume', [
+      ['MQLs', fmtN(a.mql), fmtN(b.mql)], ['SQLs', fmtN(a.sql), fmtN(b.sql)], ['SQOs', fmtN(a.sqo), fmtN(b.sqo)],
+      ['Wins', fmtN(a.won), fmtN(b.won)], ['Won ACV', K(a.acv), K(b.acv)], ['Media spend', K(a.spend), K(b.spend)]]],
+    ['Conversion', [
+      ['MQL → SQL', P(a.r1), P(b.r1)], ['SQL → SQO', P(a.r2), P(b.r2)], ['SQO → Won', P(a.r3), P(b.r3), a.sqo < 10],
+      ['MQL → Won', P(a.r4), P(b.r4)]]],
+    ['Cost', [
+      ['Cost per MQL', K(a.cpmql), K(b.cpmql)], ['Cost per SQL', K(a.cpsql), K(b.cpsql)], ['Cost per SQO', K(a.cpsqo), K(b.cpsqo)],
+      ['Media CAC', K(a.cac), K(b.cac), a.won < 10]]],
+  ];
+  document.getElementById('tiles').innerHTML = groups.map(([g, tiles]) =>
+    `<div class="tgroup"><div class="gl">${g}</div><div class="tgrid">` + tiles.map(([k, v, alt, low]) =>
+      `<div class="tile"><div class="k">${k}${low ? '<span class="chip">low n</span>' : ''}</div><div class="v">${v}</div><div class="alt">${otherName}: <b>${alt}</b></div></div>`).join('') +
+    `</div></div>`).join('');
+}
+
+function renderBars(cur) {
+  const chans = cur.list.filter(o => o.ch !== UNATTR && o.spend);
+  chans.sort((a, b) => (a.cpsql ?? Infinity) - (b.cpsql ?? Infinity));
+  const byMql = chans.slice().sort((a, b) => a.cpmql - b.cpmql).map(o => o.ch);
+  const panel = (el, key, title, unitNote, ref) => {
+    const vals = chans.map(o => o[key]).filter(v => v != null);
+    const max = Math.max(...vals, ref || 0) * 1.45;
+    let html = `<h3>${title} <span>${unitNote}</span></h3>`;
+    for (const o of chans) {
+      const v = o[key];
+      const rank = key === 'cpmql' ? byMql.indexOf(o.ch) + 1 : chans.indexOf(o) + 1;
+      const low = key === 'cpsql' ? o.sql < 10 : o.mql < 10;
+      const ev = o.ch === 'Events' && eventsMissing(S);
+      const tipHtml = `<b>${o.ch}</b><br>${fmt$(o.spend)} spend${ev ? ' (excl. Mar 2026)' : ''}<br>${fmtN(o.mql)} MQLs · ${fmtN(o.sql)} SQLs<br>${title}: ${v != null ? fmt$(v) : 'no SQLs'}${low ? '<br>Fewer than 10 records' : ''}`;
+      html += `<div class="brow"><div class="name">${rank}. ${o.ch}</div><div class="track">` +
+        (v == null ? `<span class="none">no SQLs in this view</span>` :
+          `<div class="bar${low ? ' dim' : ''}" tabindex="0" data-tip="${encodeURIComponent(tipHtml)}" style="width:${(100 * v / max).toFixed(2)}%"></div>` +
+          `<span class="bval" style="left:calc(${(100 * v / max).toFixed(2)}% + 6px)">${ev ? '≥' : ''}${fmtK(v)}${low ? '<span class="chip">low n</span>' : ''}</span>`) +
+        `</div></div>`;
+    }
+    if (ref) html += `<div class="refline" style="left:calc(var(--namew) + 10px + (100% - var(--namew) - 10px) * ${(ref / max).toFixed(4)})"><span class="reflbl">avg ${fmtK(ref)}</span></div>`;
+    el.innerHTML = html;
+  };
+  panel(document.getElementById('bars-mql'), 'cpmql', 'Cost per MQL', '(rank)', cur.t.cpmql);
+  panel(document.getElementById('bars-sql'), 'cpsql', 'Cost per SQL', '(rank)', cur.t.cpsql);
+  document.getElementById('axisnote').textContent = 'Each panel has its own scale. Dashed line: blended average across the six channels. Lighter bars rest on fewer than 10 records.';
+}
+
+const COLS = [
+  ['ch', 'Channel'], ['spend', 'Spend'], ['mql', 'MQLs'], ['sql', 'SQLs'], ['sqo', 'SQOs'], ['won', 'Wins'],
+  ['r1', 'MQL → SQL'], ['r2', 'SQL → SQO'], ['r3', 'SQO → Won'], ['cpmql', 'Cost per MQL'], ['cpsql', 'Cost per SQL'], ['cpsqo', 'Cost per SQO'], ['cac', 'Media CAC'],
+  ['acv', 'Won ACV'], ['acvper', 'ACV per $1'], ['icpshare', 'ICP share']
+];
+function cell(o, k, isTotal) {
+  const ev = o.ch === 'Events' && eventsMissing(S) && ['spend', 'cpmql', 'cpsql', 'cpsqo', 'cac', 'acvper'].includes(k);
+  const mark = ev ? '<sup>†</sup>' : '';
+  const v = o[k];
+  const lowSql = !isTotal && o.sql < 10, lowMql = !isTotal && o.mql < 10;
+  switch (k) {
+    case 'ch': return `<td>${o.ch}</td>`;
+    case 'spend': return `<td class="num">${o.spend == null ? '<span class="muted">no spend</span>' : fmt$(o.spend) + mark}</td>`;
+    case 'mql': case 'sql': case 'sqo': case 'won': return `<td class="num">${fmtN(v)}</td>`;
+    case 'r1': return `<td class="num">${v == null ? '–' : (100 * v).toFixed(1) + '%'}${lowMql && v != null ? '<span class="chip">low n</span>' : ''}<span class="cell-sub">${o.sql} of ${o.mql}</span></td>`;
+    case 'r2': return `<td class="num">${v == null ? '–' : (100 * v).toFixed(0) + '%'}${lowSql && v != null ? '<span class="chip">low n</span>' : ''}<span class="cell-sub">${o.sqo} of ${o.sql}</span></td>`;
+    case 'r3': return `<td class="num">${v == null ? '–' : (100 * v).toFixed(0) + '%'}${!isTotal && o.sqo < 10 && v != null ? '<span class="chip">low n</span>' : ''}<span class="cell-sub">${o.won} of ${o.sqo}</span></td>`;
+    case 'cac': return `<td class="num">${v == null ? '<span class="muted">no wins</span>' : fmtK(v) + mark}${!isTotal && o.won < 10 && v != null ? '<span class="chip">low n</span>' : ''}</td>`;
+    case 'cpmql': return `<td class="num">${v == null ? '–' : fmt$(v) + mark}</td>`;
+    case 'cpsql': return `<td class="num key">${v == null ? '–' : fmt$(v) + mark}${lowSql && v != null ? '<span class="chip">low n</span>' : ''}</td>`;
+    case 'cpsqo': return `<td class="num">${v == null ? '–' : fmt$(v) + mark}${!isTotal && o.sqo < 10 && v != null ? '<span class="chip">low n</span>' : ''}</td>`;
+    case 'acv': return `<td class="num">${v ? fmtK(v) : '–'}</td>`;
+    case 'acvper': return `<td class="num">${v == null ? '–' : '$' + v.toFixed(2) + mark}</td>`;
+    case 'icpshare': return `<td class="num">${v == null ? '–' : Math.round(100 * v) + '%'}</td>`;
+  }
+}
+function renderTable(cur) {
+  const rows = cur.list.slice();
+  rows.sort((a, b) => {
+    if (S.sortKey === 'ch') return S.sortDir * a.ch.localeCompare(b.ch);
+    const av = a[S.sortKey], bv = b[S.sortKey];
+    if (av == null && bv == null) return 0; if (av == null) return 1; if (bv == null) return -1;
+    return S.sortDir * (av - bv);
+  });
+  const head = '<thead><tr>' + COLS.map(([k, l]) =>
+    `<th scope="col"><button data-sort="${k}" data-active="${S.sortKey === k}">${l}${S.sortKey === k ? (S.sortDir > 0 ? ' ↑' : ' ↓') : ''}</button></th>`).join('') + '</tr></thead>';
+  const body = '<tbody>' + rows.map(o => '<tr>' + COLS.map(([k]) => cell(o, k, false)).join('') + '</tr>').join('') + '</tbody>';
+  const tot = Object.assign({ ch: 'All channels' }, cur.t);
+  const foot = '<tfoot><tr>' + COLS.map(([k]) => cell(tot, k, true)).join('') + '</tr></tfoot>';
+  const t = document.getElementById('ftable'); t.innerHTML = head + body + foot;
+  t.querySelectorAll('th button').forEach(b => b.addEventListener('click', () => {
+    const k = b.dataset.sort; if (S.sortKey === k) S.sortDir *= -1; else { S.sortKey = k; S.sortDir = k === 'ch' ? 1 : (['cpmql', 'cpsql', 'cpsqo', 'cac'].includes(k) ? 1 : -1); }
+    render();
+  }));
+}
+
+function renderNotes(cur) {
+  const ev = cur.list.find(o => o.ch === 'Events');
+  const notes = [];
+  if (eventsMissing(S) && ev.sql) {
+    const m = eventsMonths(S), est = ev.spend * (m + 1) / m;
+    notes.push(`† Events spend is missing March 2026 (invoice not received, SP-02). If March matched the average of the other ${m} months, Events spend would be about ${fmtK(est)} and cost per SQL about ${fmtK(est / ev.sql)} instead of ${fmtK(ev.cpsql)}.`);
+  }
+  if (S.view === 'raw') notes.push('As delivered: channel as typed (spelling variants grouped), stage from the hand-typed label, duplicates included, duplicate Syndication spend row included. Unattributed leads have no spend to charge them against.');
+  else notes.push('Cleaned: channel from campaign name, stage from dates, 36 duplicate leads and 1 duplicate spend row excluded. See the Data log tab.');
+  if (S.icp !== 'all' || S.seg !== 'all') notes.push('Filters narrow the leads but not the spend: cost per SQL here is the full channel spend divided by the filtered SQLs, so it reads as cost per ICP or buyer SQL.');
+  if (S.cohort === 'h2') notes.push('H2 FY26 MQLs have had less time to progress before the 30 Jun 2026 extract (LD-15), so their SQL and win rates are understated.');
+  notes.push('Spend is media only: no headcount, agency retainers or tooling (SP-06), so CAC here is media cost per closed-won deal, not fully loaded CAC. Won ACV covers closed deals only; open SQOs carry no value (LD-16). SQO → Won counts open SQOs in the base, so it understates the eventual win rate.');
+  notes.push(`Only ${cur.t.won} closed wins in this view. Channel-level win rates are too thin to rank channels on; cost per SQL is the decision metric.`);
+  document.getElementById('notes').innerHTML = notes.map(n => `<li>${n}</li>`).join('');
+}
+
+function renderFindings() {
+  const c = compute('clean', { icp: 'all', seg: 'all', cohort: 'all' });
+  const r = compute('raw', { icp: 'all', seg: 'all', cohort: 'all' });
+  const g = n => c.list.find(o => o.ch === n), gr = n => r.list.find(o => o.ch === n);
+  const gdg = g('Google Demand Gen'), web = g('Webinars'), db = g('Demandbase'), li = g('LinkedIn'), lir = gr('LinkedIn'), sy = g('Content Syndication'), syr = gr('Content Syndication');
+  const dupSy = D.leads.filter(x => x[4] && x[1] === 2).length;
+  document.getElementById('f1').textContent = `Lowest cost per MQL (${fmt$(gdg.cpmql)}) but the highest cost per SQL (${fmtK(gdg.cpsql)}). ${gdg.sql} SQLs from ${gdg.mql} MQLs and no wins. Only ${Math.round(100 * gdg.icpshare)}% of its leads are 1,000+ employees.`;
+  document.getElementById('f2').textContent = `Webinars convert at ${fmtK(web.cpsql)} per SQL and Demandbase at ${fmtK(db.cpsql)}, against a ${fmtK(c.t.cpsql)} average. Webinars stop at 3 a month (about $54K a half) and Demandbase at about $40K a half.`;
+  document.getElementById('f3').textContent = `35 LinkedIn leads lost their tracking during the Feb–Apr landing page migration. Recovering them moves LinkedIn from ${lir.mql} to ${li.mql} MQLs and ${lir.sql} to ${li.sql} SQLs, at ${fmtK(li.cpsql)} per SQL.`;
+  const icp = compute('clean', { icp: 'icp', seg: 'all', cohort: 'all' }).t;
+  const offMql = c.t.mql - icp.mql, offSql = c.t.sql - icp.sql, offWon = c.t.won - icp.won;
+  const need = 55 / 300, sqo = 55 * c.t.r2, wins = sqo * c.t.r3, avgAcv = c.t.acv / c.t.won;
+  document.getElementById('f5').textContent = `55 SQLs from 300 MQLs needs ${(100 * need).toFixed(1)}% MQL → SQL. FY26 ran at ${(100 * c.t.r1).toFixed(1)}%; 1,000+ leads ran at ${(100 * icp.r1).toFixed(1)}%. At FY26 rates, 55 SQLs is about ${Math.round(sqo)} SQOs, ${Math.round(wins)} wins and ${fmtK(wins * avgAcv)} of ACV.`;
+  document.getElementById('f6').textContent = `Leads at 1,000+ employees convert to SQL at ${(100 * icp.r1).toFixed(0)}%, under-1,000 at ${(100 * offSql / offMql).toFixed(0)}%. The ICP produced ${icp.sql} of ${c.t.sql} SQLs and ${icp.won} of ${c.t.won} wins.`;
+  document.getElementById('f4').textContent = `The contract guarantees 200 leads a year. The extract has ${syr.mql}, and ${dupSy} of those are duplicates, leaving ${sy.mql} unique leads. Only ${Math.round(100 * sy.r1)}% reach SQL.`;
+}
+
+function renderLog() {
+  const head = '<thead><tr><th>Issue</th><th>Rule applied</th><th>Rows</th><th>Effect on the cleaned data</th><th>Type</th></tr></thead>';
+  const body = '<tbody>' + D.log.map(l => {
+    const changes = /excluded|recovered|\+3|-\$/.test(l.effect_on_clean_view);
+    const assume = l.issue_id === 'Attribution';
+    return `<tr><td><b>${l.issue_id}</b></td><td>${l.rule}</td><td>${l.rows_affected}</td><td>${l.effect_on_clean_view}</td><td><span class="pill ${changes ? 'changes' : 'flag'}">${assume ? 'Assumption' : changes ? 'Changes numbers' : 'Flag only'}</span></td></tr>`;
+  }).join('') + '</tbody>';
+  document.getElementById('logtable').innerHTML = head + body;
+}
+
+function renderFlow(cur) {
+  const rows = cur.list.filter(o => o.ch !== UNATTR || o.mql).slice();
+  rows.sort((a, b) => (a.cpsql ?? Infinity) - (b.cpsql ?? Infinity));
+  const t = cur.t;
+  const rate = (v, base, n) => {
+    if (v == null) return '<div class="cv"><span class="flat">–</span></div>';
+    const cls = base == null ? 'flat' : v > base + 1e-9 ? 'up' : v < base - 1e-9 ? 'down' : 'flat';
+    const mark = cls === 'up' ? '▲ ' : cls === 'down' ? '▼ ' : '';
+    return `<div class="cv"><span class="${cls}${n < 10 ? ' thin' : ''}">${mark}${Math.round(100 * v)}%</span></div>`;
+  };
+  const line = (o, total) => `<div class="frow${total ? ' total' : ''}"><div class="fname">${o.ch}</div>` +
+    `<div class="st">${fmtN(o.mql)}</div>${rate(o.r1, total ? null : t.r1, o.mql)}` +
+    `<div class="st">${fmtN(o.sql)}</div>${rate(o.r2, total ? null : t.r2, o.sql)}` +
+    `<div class="st">${fmtN(o.sqo)}</div>${rate(o.r3, total ? null : t.r3, o.sqo)}` +
+    `<div class="st">${fmtN(o.won)}</div></div>`;
+  document.getElementById('flow').innerHTML =
+    '<div class="frow head"><div>Channel</div><div style="text-align:center">MQL</div><div></div><div style="text-align:center">SQL</div><div></div><div style="text-align:center">SQO</div><div></div><div style="text-align:center">Won</div></div>' +
+    line(Object.assign({ ch: 'All channels' }, t), true) + rows.map(o => line(o, false)).join('');
+}
+
+function renderLost() {
+  const closed = LOST.won + LOST.lost;
+  document.getElementById('lostlede').textContent = `${closed} deals closed in FY26: ${LOST.won} won and ${LOST.lost} lost. Here is what the ${LOST.lost} losses have in common.`;
+  const tiles = [['Closed deals', closed], ['Wins', LOST.won], ['Losses', LOST.lost], ['Win rate (closed deals)', Math.round(100 * LOST.won / closed) + '%'], ['Open SQOs', LOST.open_sqo]];
+  document.getElementById('losttiles').innerHTML = tiles.map(([k, v]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+  const rs = Object.entries(LOST.reasons).sort((a, b) => b[1] - a[1]); const mx = rs[0][1];
+  document.getElementById('reasons').innerHTML = rs.map(([r, n]) =>
+    `<div class="rrow"><div>${r.replace(' - ', ': ')}</div><div><div class="rbar" style="width:${(100 * n / mx).toFixed(1)}%"></div></div><div class="rn">${n}</div></div>`).join('');
+  const wl = (id, rows, label) => document.getElementById(id).innerHTML =
+    `<thead><tr><th>${label}</th><th>Wins</th><th>Losses</th><th>Win rate</th></tr></thead><tbody>` +
+    rows.map(([k, w, l]) => `<tr><td>${k}</td><td class="num${w === 0 ? ' zero' : ''}">${w}</td><td class="num">${l}</td><td class="num">${Math.round(100 * w / (w + l))}%</td></tr>`).join('') + '</tbody>';
+  wl('bysize', LOST.bysize, 'Employees'); wl('byseg', LOST.byseg, 'Segment');
+  document.getElementById('lostdeals').innerHTML = '<thead><tr><th>Reason</th><th>Channel</th><th>Segment</th><th>Employees</th><th>Owner</th><th>Days SQO → closed</th></tr></thead><tbody>' +
+    LOST.deals.map(d => `<tr><td>${d[3].replace(' - ', ': ')}</td><td>${d[0]}</td><td>${d[1]}</td><td>${d[2]}</td><td>${d[4]}</td><td class="num">${d[5] ?? '–'}</td></tr>`).join('') + '</tbody>';
+}
+
+function quant(a, q) { if (!a.length) return null; const s = a.slice().sort((x, y) => x - y); const p = (s.length - 1) * q, lo = Math.floor(p), hi = Math.ceil(p); return s[lo] + (s[hi] - s[lo]) * (p - lo); }
+function profLeads(st) {
+  const out = [];
+  D.leads.forEach((r, i) => {
+    const [rc, cc, rs, cs, dup, icp, inf, half] = r;
+    if (dup) return;
+    if (st.icp === 'icp' && !icp) return;
+    if (st.seg === 'buyers' && inf) return;
+    if (st.cohort === 'h1' && half !== 0) return;
+    if (st.cohort === 'h2' && half !== 1) return;
+    out.push([r, D.prof.rows[i]]);
+  });
+  return out;
+}
+function groupBy(list, keyIdx, names) {
+  const g = names.map(n => ({ name: n, mql: 0, sql: 0, sqo: 0, won: 0, acv: 0, icp: 0 }));
+  for (const [r, p] of list) { const o = g[p[keyIdx]]; o.mql++; if (r[5]) o.icp++; if (r[3] >= 1) o.sql++; if (r[3] >= 2) o.sqo++; if (r[3] === 3) { o.won++; o.acv += r[8]; } }
+  return g.filter(o => o.mql).map(o => Object.assign(o, { r: o.sql / o.mql }));
+}
+function profTable(id, rows, label, chCol) {
+  rows.sort((a, b) => b.r - a.r);
+  const mx = Math.max(...rows.map(o => o.r), 0.01);
+  document.getElementById(id).innerHTML = `<thead><tr><th>${label}</th>${chCol ? '<th style="text-align:left">Channel</th>' : ''}<th>MQLs</th><th>SQLs</th><th>MQL → SQL</th><th>SQOs</th><th>Wins</th><th>Won ACV</th><th>ICP share</th></tr></thead><tbody>` +
+    rows.map(o => `<tr><td>${o.name}</td>${chCol ? `<td style="text-align:left">${CH[D.prof.campCh[D.prof.campaigns.indexOf(o.name)]]}</td>` : ''}<td class="num">${o.mql}</td><td class="num">${o.sql}</td>` +
+      `<td class="num"><span class="rate"><i style="width:${Math.round(56 * o.r / mx)}px"></i>${(100 * o.r).toFixed(0)}%${o.mql < 10 ? '<span class="chip">low n</span>' : ''}</span></td>` +
+      `<td class="num">${o.sqo}</td><td class="num">${o.won}</td><td class="num">${o.acv ? fmtK(o.acv) : '–'}</td><td class="num">${Math.round(100 * o.icp / o.mql)}%</td></tr>`).join('') + '</tbody>';
+}
+function renderProfile() {
+  const list = profLeads(S);
+  const filt = [S.icp === 'icp' ? 'ICP (1,000+) only' : null, S.seg === 'buyers' ? 'buyers only' : null, S.cohort === 'h1' ? 'H1 FY26 MQLs' : S.cohort === 'h2' ? 'H2 FY26 MQLs' : null].filter(Boolean);
+  document.getElementById('profhint').textContent = `Cleaned data · ${list.length} leads · ${filt.length ? filt.join(', ') : 'all leads, full year'}. The company size, segment and cohort filters apply here; the data toggle does not.`;
+  const stages = [['Created → MQL', 3], ['MQL → SQL', 4], ['SQL → SQO', 5], ['SQO → Closed', 6], ['MQL → Won', 7]];
+  const vals = stages.map(([n, k]) => [n, list.map(([, p]) => p[k]).filter(v => v != null && v >= 0)]);
+  const med = vals.map(([n, a]) => [n, quant(a, .5), a]);
+  document.getElementById('cyctiles').innerHTML = med.map(([n, m, a]) => `<div class="tile"><div class="k">${n}</div><div class="v">${m == null ? '–' : Math.round(m) + 'd'}</div><div class="alt">median · n = <b>${a.length}</b></div></div>`).join('');
+  const segs = med.slice(0, 4); const tot = segs.reduce((s, [, m]) => s + (m || 0), 0);
+  let cum = 0;
+  document.getElementById('timeline').innerHTML = segs.map(([n, m], i) => { cum += m || 0; return `<div class="tseg" style="flex:${Math.max(m || 0, 1)} 1 0"><div class="tb" style="opacity:${(0.45 + 0.18 * i).toFixed(2)}"></div><div class="tl">${n}<br><b>${Math.round(m || 0)}d</b> · day ${Math.round(cum)}</div></div>`; }).join('');
+  document.getElementById('cyctable').innerHTML = '<thead><tr><th>Stage</th><th>n</th><th>Median</th><th>Mean</th><th>Middle 50%</th><th>Range</th></tr></thead><tbody>' +
+    vals.map(([n, a]) => a.length ? `<tr><td>${n}</td><td class="num">${a.length}</td><td class="num">${Math.round(quant(a, .5))}</td><td class="num">${Math.round(a.reduce((s, v) => s + v, 0) / a.length)}</td><td class="num">${Math.round(quant(a, .25))}–${Math.round(quant(a, .75))}</td><td class="num">${Math.min(...a)}–${Math.max(...a)}</td></tr>` : `<tr><td>${n}</td><td class="num">0</td><td colspan="4" class="muted">no records</td></tr>`).join('') + '</tbody>';
+  const byc = CH.map((c, ci) => { const L2 = list.filter(([r]) => r[1] === ci); const m = k => { const a = L2.map(([, p]) => p[k]).filter(v => v != null && v >= 0); return a.length ? `${Math.round(quant(a, .5))}<span class="cell-sub">n ${a.length}</span>` : '<span class="muted">–</span>'; }; return [c, m(4), m(5), m(7)]; });
+  document.getElementById('cycch').innerHTML = '<thead><tr><th>Channel</th><th>MQL → SQL</th><th>SQL → SQO</th><th>MQL → Won</th></tr></thead><tbody>' + byc.map(r => `<tr><td>${r[0]}</td><td class="num">${r[1]}</td><td class="num">${r[2]}</td><td class="num">${r[3]}</td></tr>`).join('') + '</tbody>';
+  profTable('pcamp', groupBy(list, 0, D.prof.campaigns), 'Campaign', true);
+  profTable('preg', groupBy(list, 1, D.prof.regions), 'Region', false);
+  profTable('ptitle', groupBy(list, 2, D.prof.titles), 'Job title', false);
+  document.getElementById('abmhint').textContent = document.getElementById('profhint').textContent;
+  renderAbm(list);
+}
+
+function renderAbm(list) {
+  const y = list.filter(([, p]) => p[8] === 1), n = list.filter(([, p]) => p[8] === 0);
+  const st = a => { const s = a.filter(([r]) => r[3] >= 1).length, w = a.filter(([r]) => r[3] === 3).length; return { n: a.length, sql: s, won: w, r: a.length ? s / a.length : null }; };
+  const Y = st(y), N = st(n);
+  const pc = v => v == null ? '–' : Math.round(100 * v) + '%';
+  document.getElementById('abmtiles').innerHTML = [
+    ['Tier 1 leads', Y.n, `of ${list.length} leads`], ['Tier 1 accounts reached', Math.round(100 * Y.n / 1200) + '%', `${Y.n} of 1,200`],
+    ['Tier 1 MQL → SQL', pc(Y.r), `other leads: <b>${pc(N.r)}</b>`], ['Tier 1 wins', Y.won, `other leads: <b>${N.won}</b>`]
+  ].map(([k, v, a]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="alt">${a}</div></div>`).join('');
+  document.getElementById('abmch').innerHTML = '<thead><tr><th>Channel</th><th>Tier 1 leads</th><th>Tier 1 MQL → SQL</th><th>Other leads</th><th>Other MQL → SQL</th></tr></thead><tbody>' +
+    CH.map((c, ci) => { const a = st(y.filter(([r]) => r[1] === ci)), b = st(n.filter(([r]) => r[1] === ci));
+      const cell = o => `${pc(o.r)}${o.n && o.n < 10 ? '<span class="chip">low n</span>' : ''}`;
+      return `<tr><td>${c}</td><td class="num">${a.n}</td><td class="num">${cell(a)}</td><td class="num">${b.n}</td><td class="num">${cell(b)}</td></tr>`; }).join('') + '</tbody>';
+  document.getElementById('abmsize').innerHTML = '<thead><tr><th>Employees</th><th>Tier 1 leads</th><th>Share</th></tr></thead><tbody>' +
+    D.prof.bands.map((b, bi) => { const k = y.filter(([, p]) => p[9] === bi).length; return `<tr><td>${b}</td><td class="num${bi < 2 && k ? ' zero' : ''}">${k}</td><td class="num">${Y.n ? Math.round(100 * k / Y.n) : 0}%</td></tr>`; }).join('') + '</tbody>';
+}
+
+function render() {
+  document.querySelectorAll('.seg').forEach(g => g.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(S[g.dataset.key] === b.dataset.val))));
+  const cur = compute(S.view, S), other = compute(S.view === 'clean' ? 'raw' : 'clean', S);
+  document.getElementById('hint').textContent = S.view === 'clean'
+    ? 'Showing the cleaned data. Tiles compare against the extract as delivered.'
+    : 'Showing the extract as delivered, before any fixes. Tiles compare against the cleaned data.';
+  renderTiles(cur, other); renderBars(cur); renderFlow(cur); renderProfile(); renderTable(cur); renderNotes(cur);
+  try { localStorage.setItem('league-funnel-state', JSON.stringify(S)); } catch (e) {}
+}
+
+document.querySelectorAll('.seg').forEach(g => g.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return; S[g.dataset.key] = b.dataset.val; render();
+}));
+document.querySelectorAll('[role="tab"]').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('[role="tab"]').forEach(x => { const on = x === t; x.setAttribute('aria-selected', String(on)); document.getElementById(x.getAttribute('aria-controls')).hidden = !on; });
+  const rail = document.querySelector('.rail'), off = ['t-budget', 't-log', 't-rec', 't-build'].includes(t.id);
+  rail.classList.toggle('off', off); rail.setAttribute('aria-disabled', String(off));
+  rail.querySelectorAll('button').forEach(b => { b.disabled = off; });
+  document.getElementById('hint').textContent = off ? (t.id === 't-budget' ? 'These filters don\'t apply to the budget allocator, which uses cleaned FY26 rates.' : 'These filters don\'t apply to this tab.') : (S.view === 'clean' ? 'Showing the cleaned data. Tiles compare against the extract as delivered.' : 'Showing the extract as delivered, before any fixes. Tiles compare against the cleaned data.');
+}));
+document.addEventListener('mouseover', e => { const b = e.target.closest('.bar'); if (b) showTip(e, decodeURIComponent(b.dataset.tip)); });
+document.addEventListener('mousemove', e => { if (!tip.hidden && e.target.closest('.bar')) moveTip(e); });
+document.addEventListener('mouseout', e => { if (e.target.closest('.bar')) hideTip(); });
+document.addEventListener('focusin', e => { const b = e.target.closest('.bar'); if (b) { const r = b.getBoundingClientRect(); showTip({ clientX: r.right, clientY: r.top }, decodeURIComponent(b.dataset.tip)); } });
+document.addEventListener('focusout', e => { if (e.target.closest('.bar')) hideTip(); });
+
+renderFindings(); renderLog(); renderLost(); render();
+// Keep the last two words of running text together so no line ends on a single word.
+const WIDOW_SEL = 'p, li, .so, .finding .t, .tl-e, .callout, .lede, h1, h2, h3, .notes li';
+function fixWidows(root) {
+  (root || document).querySelectorAll(WIDOW_SEL).forEach(el => {
+    const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    let last = null, n; while ((n = w.nextNode())) if (n.nodeValue.trim()) last = n;
+    if (!last) return;
+    const v = last.nodeValue, trimmed = v.replace(/\s+$/, ''), i = trimmed.lastIndexOf(' ');
+    if (i > 0 && trimmed.length - i <= 18) last.nodeValue = trimmed.slice(0, i) + ' ' + trimmed.slice(i + 1) + v.slice(trimmed.length);
+  });
+}
+let widowQueued = false;
+new MutationObserver(() => { if (widowQueued) return; widowQueued = true; requestAnimationFrame(() => { widowQueued = false; fixWidows(); }); })
+  .observe(document.querySelector('.wrap'), { childList: true, subtree: true });
+fixWidows();
+
+// ---------- Budget allocator ----------
+const BCH = ['Events', 'Webinars', 'Demandbase', 'LinkedIn', 'Content Syndication', 'Google Demand Gen'];
+const BASE_RATES = {
+  'Events': { cpm: 107000 / 42, r: 17 / 42, icp: 0.95, base: 53500, h2: 37000 },
+  'Webinars': { cpm: 72500 / 89, r: 24 / 89, icp: 0.90, base: 36250, h2: 42895.83 },
+  'Demandbase': { cpm: 65000 / 35, r: 12 / 35, icp: 1.00, base: 32500, h2: 32500.02 },
+  'LinkedIn': { cpm: 170000 / 150, r: 31 / 150, icp: 0.80, base: 85000, h2: 97749.99 },
+  'Content Syndication': { cpm: 97500 / 154, r: 15 / 154, icp: 0.56, base: 48750, h2: 48750 },
+  'Google Demand Gen': { cpm: 55000 / 259, r: 6 / 259, icp: 0.29, base: 27500, h2: 27499.98 },
+};
+const BUDGET = 280000, HLTH = 45000, WEB_CAP = 54000, DB_CAP = 40000, T_MQL = 300, T_SQL = 55;
+const SQL_SQO = 52 / 105, SQO_WON = 16 / 52, AVG_ACV = 733937.5;
+const SYN_JULY = 8125, SYN_ICP_R = 0.103;
+const PRESETS = {
+  sql: { 'Events': 45000, 'Webinars': 54000, 'Demandbase': 40000, 'Google Demand Gen': 0, syn: 'exit' },
+  bal: { 'Events': 45000, 'Webinars': 54000, 'Demandbase': 40000, 'Google Demand Gen': 20000, syn: 'exit' },
+  mql: { 'Events': 45000, 'Webinars': 54000, 'Demandbase': 15000, 'Google Demand Gen': 60000, syn: 'renew' },
+  fy26: { 'Events': 45000, 'Webinars': 42896, 'Demandbase': 32500, 'Google Demand Gen': 27500, syn: 'renew' },
+};
+let B = null;
+function freshB(preset) {
+  const p = PRESETS[preset];
+  const b = { preset, pen: B ? B.pen : 25, evadj: B ? B.evadj : true, syn: p.syn, synPrice: B ? B.synPrice : 600, synLeads: B ? B.synLeads : 40,
+    rates: B ? B.rates : JSON.parse(JSON.stringify(BASE_RATES)), spend: {} };
+  for (const c of BCH) if (c !== 'LinkedIn' && c !== 'Content Syndication') b.spend[c] = p[c];
+  b.spend['Content Syndication'] = synSpend(b);
+  b.spend['LinkedIn'] = Math.max(0, BUDGET - BCH.filter(c => c !== 'LinkedIn').reduce((s, c) => s + b.spend[c], 0));
+  return b;
+}
+function synSpend(b) { return b.syn === 'exit' ? SYN_JULY : b.syn === 'renew' ? 48750 : b.synPrice * b.synLeads; }
+// The allocator always opens on the recommended plan: Balanced, Syndication Option A, 25%, FY26 rates.
+try { localStorage.removeItem('league-budget-v2'); } catch (e) {}
+B = freshB('bal');
+
+function projectChannel(c, s, pen) {
+  const R = B.rates[c];
+  if (c === 'Content Syndication') {
+    if (B.syn === 'reneg') { const m = B.synLeads; return { mql: m, sql: m * SYN_ICP_R, icp: m }; }
+    const m = s / R.cpm; return { mql: m, sql: m * R.r, icp: m * R.icp };
+  }
+  let cpm = R.cpm * (c === 'Events' && B.evadj ? 12 / 11 : 1);
+  let eff = s;
+  if (c === 'Demandbase') eff = Math.min(s, DB_CAP);
+  const base = R.base;
+  const effective = Math.min(eff, base) + Math.max(0, eff - base) / (1 + pen / 100);
+  const m = effective / cpm;
+  return { mql: m, sql: m * R.r, icp: m * R.icp };
+}
+function projectAll(pen) {
+  const rows = BCH.map(c => Object.assign({ ch: c, spend: B.spend[c] }, projectChannel(c, B.spend[c], pen)));
+  const t = rows.reduce((a, r) => { a.spend += r.spend; a.mql += r.mql; a.sql += r.sql; a.icp += r.icp; return a; }, { spend: 0, mql: 0, sql: 0, icp: 0 });
+  return { rows, t };
+}
+const k$ = v => Math.abs(v) >= 1e6 ? '$' + (v / 1e6).toFixed(2) + 'M' : '$' + (Math.abs(v) >= 1000 ? (v / 1000).toFixed(1).replace(/\.0$/, '') + 'K' : Math.round(v));
+const dlt = d => Math.abs(d) < 50 ? 'no change' : (d > 0 ? '+' : '−') + k$(Math.abs(d));
+
+function rangeBox(id, label, lo, base, hi, target, max) {
+  const x = v => Math.max(0, Math.min(100, 100 * v / max));
+  const status = lo >= target ? ['up', 'Meets target in every case'] : base >= target ? ['flat', 'Meets target in the base case only'] : hi >= target ? ['down', 'Meets target only with no diminishing returns'] : ['down', 'Short of target in every case'];
+  document.getElementById(id).innerHTML =
+    `<div class="rb-head"><span class="rb-l">${label}</span><span class="rb-v">${Math.round(lo)}–${Math.round(hi)}</span><span class="rb-b">base ${Math.round(base)} · target ${target}</span></div>` +
+    `<div class="rb-track"><div class="rb-band" style="left:${x(lo)}%;width:${Math.max(0.8, x(hi) - x(lo))}%"></div>` +
+    `<div class="rb-base" style="left:${x(base)}%"></div><div class="rb-target" style="left:${x(target)}%"><span>target ${target}</span></div></div>` +
+    `<div class="rb-scale"><span>0</span><span>${max}</span></div>` +
+    `<div class="cv" style="text-align:left"><span class="${status[0]}">${status[0] === 'up' ? '▲ ' : status[0] === 'down' ? '▼ ' : ''}${status[1]}</span></div>`;
+}
+
+function call(c, s) { const h = BASE_RATES[c].h2; if (s === 0) return ['stop', 'Stop']; if (c === 'Content Syndication' && s <= SYN_JULY + 1) return ['stop', 'Stop after July']; const d = s / h - 1; return d > 0.15 ? ['grow', 'Grow'] : d < -0.15 ? ['cut', 'Cut'] : ['hold', 'Hold']; }
+function updateBudget() {
+  const lo = projectAll(50), base = projectAll(B.pen), hi = projectAll(0);
+  document.getElementById('pen-v').textContent = B.pen + '%';
+  document.getElementById('pen').value = B.pen;
+  document.getElementById('pen').style.setProperty('--fill', (100 * B.pen / 75).toFixed(1) + '%');
+  document.getElementById('evadj').checked = B.evadj;
+  document.querySelectorAll('#presets button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.p === B.preset)));
+  const t = base.t, left = BUDGET - t.spend;
+  rangeBox('rg-sql', 'SQLs', lo.t.sql, t.sql, hi.t.sql, T_SQL, 70);
+  rangeBox('rg-mql', 'MQLs', lo.t.mql, t.mql, hi.t.mql, T_MQL, 360);
+  document.getElementById('bl-lede').textContent = `Range: 50% to 0% diminishing returns · base case ${B.pen}% · ` +
+    (Math.abs(left) < 1 ? '$280,000 fully allocated' : left > 0 ? `${k$(left)} unallocated` : `${k$(-left)} over budget`);
+  const gdg = B.spend['Google Demand Gen'];
+  if (gdg > 0) {
+    const g = projectChannel('Google Demand Gen', gdg, B.pen), li0 = projectChannel('LinkedIn', B.spend['LinkedIn'], B.pen), li1 = projectChannel('LinkedIn', B.spend['LinkedIn'] + gdg, B.pen);
+    document.getElementById('bl-trade').innerHTML = `<b>What the MQL target buys.</b> The ${k$(gdg)} in Google Demand Gen brings about ${Math.round(g.mql)} MQLs (only ${Math.round(g.icp)} at 1,000+ employees) and ${g.sql.toFixed(1)} SQLs. The same money in LinkedIn would bring about ${Math.round(li1.mql - li0.mql)} MQLs and ${(li1.sql - li0.sql).toFixed(1)} SQLs. Meeting 300 MQLs costs about ${Math.max(0, (li1.sql - li0.sql) - g.sql).toFixed(1)} SQLs.`;
+  } else {
+    document.getElementById('bl-trade').innerHTML = '<b>No Google Demand Gen in this plan.</b> Every dollar goes to channels judged on SQLs; the MQL target is the trade-off.';
+  }
+  const sqo = t.sql * SQL_SQO, wins = sqo * SQO_WON;
+  const tiles = [
+    ['Allocated', k$(t.spend), Math.abs(left) < 1 ? 'on budget' : left > 0 ? `${k$(left)} left` : `<b class="over">${k$(-left)} over</b>`],
+    ['ICP MQLs (1,000+)', Math.round(t.icp), `${Math.round(100 * t.icp / t.mql)}% of MQLs`],
+    ['Cost per SQL', k$(t.spend / t.sql), 'base case'],
+    ['Expected SQOs', Math.round(sqo), 'at 49.5% of SQLs'],
+    ['Expected wins', wins.toFixed(1), 'at 30.8% of SQOs'],
+    ['Expected ACV', k$(wins * AVG_ACV), 'closes mostly in H2 FY27'],
+  ];
+  document.getElementById('bl-tiles').innerHTML = tiles.map(([k, v, a]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="alt">${a}</div></div>`).join('');
+  base.rows.forEach((r, i) => {
+    const d = r.spend - BASE_RATES[r.ch].h2, [cls, lbl] = call(r.ch, r.spend);
+    const dc = document.getElementById('dc-' + i); dc.className = 'num ' + (d > 0 ? 'pos' : d < 0 ? 'neg' : ''); dc.textContent = dlt(d);
+    document.getElementById('cl-' + i).innerHTML = `<span class="call ${cls}">${lbl}</span>`;
+    document.getElementById('mq-' + i).textContent = Math.round(r.mql);
+    document.getElementById('sq-' + i).textContent = r.sql.toFixed(1);
+    document.getElementById('cs-' + i).textContent = r.sql > 0.05 ? k$(r.spend / r.sql) : '–';
+  });
+  document.getElementById('ft-sp').innerHTML = `<b class="${t.spend > BUDGET + 1 ? 'over' : ''}">${k$(t.spend)}</b> <span class="muted">of $280K</span>`;
+  document.getElementById('ft-mq').textContent = Math.round(t.mql);
+  document.getElementById('ft-sq').textContent = t.sql.toFixed(1);
+  document.getElementById('ft-cs').textContent = k$(t.spend / t.sql);
+  const groups = { Stop: [], Cut: [], Hold: [], Grow: [] };
+  base.rows.forEach(r => { const [cl] = call(r.ch, r.spend), l = { stop: 'Stop', cut: 'Cut', hold: 'Hold', grow: 'Grow' }[cl]; const d = r.spend - BASE_RATES[r.ch].h2; groups[l].push(Math.abs(d) < 50 ? r.ch : `${r.ch} (${dlt(d)})`); });
+  document.getElementById('readout').innerHTML = ['Stop', 'Cut', 'Grow', 'Hold'].filter(g => groups[g].length).map(g => `<b>${g}:</b> ${groups[g].join(', ')}`).join(' · ') + '. Compared with H2 FY26 actual spend.';
+}
+
+function renderBudget() {
+  const base = projectAll(B.pen), t = base.t;
+  const head = '<thead><tr><th>Channel</th><th>H2 FY26</th><th>H1 FY27 plan</th><th>Change</th><th>Call</th><th>MQLs</th><th>SQLs</th><th>Cost per SQL</th></tr></thead>';
+  const body = base.rows.map(r => {
+    const c = r.ch, h2 = BASE_RATES[c].h2, d = r.spend - h2, [cls, lbl] = call(c, r.spend);
+    const lockSyn = c === 'Content Syndication';
+    const cap = c === 'Webinars' ? WEB_CAP : c === 'Demandbase' ? DB_CAP : null, max = cap || 200000, min = c === 'Events' ? HLTH : 0;
+    const note = c === 'Events' ? `<span class="cell-sub">includes $45K HLTH (locked)</span>` : c === 'Webinars' ? `<span class="cell-sub">cap $54K per half (3 a month at about $3K)</span>` : c === 'Demandbase' ? `<span class="cell-sub">cap $40K per half (reach ceiling on 1,200 accounts)</span>` : c === 'Content Syndication' ? `<span class="cell-sub">${B.syn === 'exit' ? 'Option A: July, then cancel' : B.syn === 'reneg' ? 'Option B: renegotiated' : 'Option C: renewed on current terms'}</span>` : '';
+    const input = lockSyn ? `<span class="num">${k$(r.spend)}</span>` :
+      `<div class="sp"><input type="number" id="in-${BCH.indexOf(c)}" data-ch="${c}" min="${min}" max="${max}" step="500" value="${Math.round(r.spend)}" aria-label="${c} spend"><input type="range" data-ch="${c}" min="${min}" max="${cap || 160000}" step="500" value="${Math.round(r.spend)}" aria-label="${c} spend slider"></div>`;
+    const i = BCH.indexOf(c);
+    return `<tr><td><b>${c}</b><span class="cell-sub" id="nt-${i}">${note.replace(/^<span class="cell-sub">|<\/span>$/g, '')}</span></td><td class="num">${k$(h2)}</td><td>${input}</td><td class="num" id="dc-${i}"></td>` +
+      `<td id="cl-${i}"></td><td class="num" id="mq-${i}"></td><td class="num" id="sq-${i}"></td><td class="num" id="cs-${i}"></td></tr>`;
+  }).join('');
+  const foot = `<tfoot><tr><td>Total</td><td class="num">${k$(BCH.reduce((s, c) => s + BASE_RATES[c].h2, 0))}</td><td class="num" id="ft-sp"></td><td></td><td></td><td class="num" id="ft-mq"></td><td class="num" id="ft-sq"></td><td class="num" id="ft-cs"></td></tr></tfoot>`;
+  document.getElementById('alloc').innerHTML = head + '<tbody>' + body + '</tbody>' + foot;
+
+  document.getElementById('syn-opts').innerHTML = `<div class="synrow"><span class="lbl">Content Syndication</span>
+    <div class="seg" role="group" aria-label="Syndication option" id="synseg">
+      <button data-s="exit" aria-pressed="${B.syn === 'exit'}">A: July, then cancel</button>
+      <button data-s="reneg" aria-pressed="${B.syn === 'reneg'}">B: Renegotiate</button>
+      <button data-s="renew" aria-pressed="${B.syn === 'renew'}">C: Renew as is</button></div>
+    ${B.syn === 'reneg' ? `<label>Price per unique 1,000+ lead <input type="number" id="syn-price" min="0" step="50" value="${B.synPrice}"></label><label>Leads per half <input type="number" id="syn-leads" min="0" step="5" value="${B.synLeads}"></label><span class="muted">SQL rate assumed at 10.3% (FY26 Syndication leads at 1,000+).</span>` : ''}</div>`;
+
+  document.getElementById('assume').innerHTML = '<thead><tr><th>Channel</th><th>Cost per MQL</th><th>MQL → SQL</th><th>ICP share</th><th>FY26 avg per half</th></tr></thead><tbody>' +
+    BCH.map((c, i) => { const R = B.rates[c]; return `<tr><td>${c}</td><td><input type="number" class="as" data-ch="${c}" data-k="cpm" step="1" value="${Math.round(R.cpm)}" aria-label="${c} cost per MQL"></td><td><input type="number" class="as" data-ch="${c}" data-k="r" step="0.1" value="${(100 * R.r).toFixed(1)}" aria-label="${c} MQL to SQL %"> %</td><td><input type="number" class="as" data-ch="${c}" data-k="icp" step="1" value="${Math.round(100 * R.icp)}" aria-label="${c} ICP share %"> %</td><td class="num">${k$(R.base)}</td></tr>`; }).join('') + '</tbody>';
+  updateBudget();
+}
+
+// Syndication spend follows its option; LinkedIn absorbs the difference so the plan stays on budget.
+function resync() {
+  const old = B.spend['Content Syndication'], nw = synSpend(B);
+  B.spend['Content Syndication'] = nw;
+  // Take any increase from other channels (LinkedIn first) so the total never exceeds $280K.
+  let over = BCH.reduce((s, c) => s + B.spend[c], 0) - BUDGET;
+  for (const c of ['LinkedIn', 'Google Demand Gen', 'Demandbase', 'Webinars', 'Events']) {
+    if (over <= 0) break;
+    const floor = c === 'Events' ? HLTH : 0, cut = Math.min(over, B.spend[c] - floor);
+    B.spend[c] -= cut; over -= cut;
+  }
+  if (over > 0) { B.synLeads = Math.max(0, Math.floor((nw - over) / Math.max(1, B.synPrice))); B.spend['Content Syndication'] = synSpend(B); flashCap('Syndication volume capped to stay within $280,000.'); }
+  else if (nw > old) flashCap(`${k$(nw - old)} moved from LinkedIn to Content Syndication to stay within $280,000.`);
+}
+function flashCap(msg) { const n = document.getElementById('capnote'); if (!n) return; n.textContent = msg; n.hidden = false; clearTimeout(flashCap.t); flashCap.t = setTimeout(() => { n.hidden = true; }, 4000); }
+function setSpend(c, v) {
+  let x = Number(v) || 0;
+  if (c === 'Events') x = Math.max(HLTH, x);
+  if (c === 'Webinars' && x > WEB_CAP) { x = WEB_CAP; flashCap('Webinars capped at $54K: at most 3 a month at about $3K each this half.'); }
+  if (c === 'Demandbase' && x > DB_CAP) { x = DB_CAP; flashCap('Demandbase capped at $40K: past that, spend buys frequency on the 1,200 Tier 1 accounts, not reach.'); }
+  const others = BCH.filter(k => k !== c).reduce((s, k) => s + B.spend[k], 0), room = BUDGET - others;
+  if (x > room) { x = Math.max(c === 'Events' ? HLTH : 0, room); flashCap(`${c} capped at ${k$(x)}: the plan can't exceed $280,000. Lower another channel to free budget.`); }
+  B.spend[c] = Math.max(0, x); B.preset = null;
+}
+document.getElementById('p-budget').addEventListener('change', e => {
+  const el = e.target;
+  if (el.matches('#alloc input[type=number]')) { setSpend(el.dataset.ch, el.value); el.value = Math.round(B.spend[el.dataset.ch]); const s = el.parentElement.querySelector('input[type=range]'); if (s) s.value = el.value; updateBudget(); }
+  else if (el.matches('.as')) { const R = B.rates[el.dataset.ch], k = el.dataset.k; R[k] = k === 'cpm' ? Math.max(1, Number(el.value)) : Math.max(0, Number(el.value)) / 100; renderBudget(); }
+  else if (el.id === 'syn-price' || el.id === 'syn-leads') { B[el.id === 'syn-price' ? 'synPrice' : 'synLeads'] = Math.max(0, Number(el.value) || 0); resync(); renderBudget(); }
+  else if (el.id === 'evadj') { B.evadj = el.checked; renderBudget(); }
+});
+document.getElementById('p-budget').addEventListener('input', e => {
+  const el = e.target;
+  if (el.matches('#alloc input[type=range]')) { setSpend(el.dataset.ch, el.value); const n = el.parentElement.querySelector('input[type=number]'); if (n) n.value = Math.round(B.spend[el.dataset.ch]); el.value = Math.round(B.spend[el.dataset.ch]); updateBudget(); }
+  else if (el.id === 'pen') { B.pen = Number(el.value); updateBudget(); }
+});
+document.getElementById('p-budget').addEventListener('click', e => {
+  const p = e.target.closest('#presets button'); if (p) { B = freshB(p.dataset.p); renderBudget(); return; }
+  const s = e.target.closest('#synseg button'); if (s) { B.syn = s.dataset.s; resync(); B.preset = null; renderBudget(); return; }
+  if (e.target.id === 'reset-assume') { B.rates = JSON.parse(JSON.stringify(BASE_RATES)); renderBudget(); }
+});
+renderBudget();
+
+// ---------- Recommendation (fixed snapshot, independent of allocator edits) ----------
+function snap(pk, syn) {
+  const saved = B, p = PRESETS[pk];
+  const b = { preset: pk, pen: 25, evadj: true, syn: syn || p.syn, synPrice: 600, synLeads: 40, rates: JSON.parse(JSON.stringify(BASE_RATES)), spend: {} };
+  for (const c of BCH) if (c !== 'LinkedIn' && c !== 'Content Syndication') b.spend[c] = p[c];
+  b.spend['Content Syndication'] = synSpend(b);
+  b.spend['LinkedIn'] = Math.max(0, BUDGET - BCH.filter(c => c !== 'LinkedIn').reduce((s, c) => s + b.spend[c], 0));
+  B = b;
+  const r = { lo: projectAll(50), base: projectAll(25), hi: projectAll(0), spend: Object.assign({}, b.spend), gdg: projectChannel('Google Demand Gen', b.spend['Google Demand Gen'], 25),
+    liNow: projectChannel('LinkedIn', b.spend['LinkedIn'], 25), liPlus: projectChannel('LinkedIn', b.spend['LinkedIn'] + b.spend['Google Demand Gen'], 25) };
+  B = saved; return r;
+}
+const WHY = {
+  'Events': 'HLTH 2026 only ($45K committed); attach executive roundtables',
+  'Webinars': 'Lowest cost per SQL; funded to the $54K half-year cap',
+  'Demandbase': 'Second-lowest cost per SQL; funded to its $40K reach ceiling',
+  'LinkedIn': 'Largest SQL source; takes the remainder once tracking is fixed',
+  'Content Syndication': 'Complete the contract through July, then cancel',
+  'Google Demand Gen': 'Kept as a labelled MQL-volume line, reported apart from ICP MQLs',
+};
+function renderRec() {
+  const R = snap('bal', 'exit'), t = R.base.t, lo = R.lo.t, hi = R.hi.t;
+  const g = R.gdg, liGain = R.liPlus.sql - R.liNow.sql, costSql = Math.max(0, liGain - g.sql);
+  const r = c => BASE_RATES[c], f$ = v => '$' + Math.round(v).toLocaleString('en-US');
+  const rng = (a, b) => Math.round(a) === Math.round(b) ? `${Math.round(a)}` : `${Math.round(a)}–${Math.round(b)}`;
+  document.getElementById('rec-two').innerHTML = [
+    `<b>The answer.</b> Move H1 FY27 spend from volume to conversion. 300 MQLs is achievable (base ${Math.round(t.mql)}); 55 SQLs is within reach but not safe (${rng(lo.sql, hi.sql)}, base ${Math.round(t.sql)}).`,
+    `<b>Why.</b> Cost per MQL ranks the channels backwards. Google Demand Gen has the cheapest MQL (${f$(r('Google Demand Gen').cpm)}) and the most expensive SQL (${k$(r('Google Demand Gen').cpm / r('Google Demand Gen').r)}), with no wins. Webinars (${k$(r('Webinars').cpm / r('Webinars').r)}) and Demandbase (${k$(r('Demandbase').cpm / r('Demandbase').r)}) are the cheapest per SQL, but both are capped.`,
+    `<b>The moves.</b> Fill Webinars and Demandbase to their caps, keep HLTH at $45K with roundtables attached, and give LinkedIn the remainder once its tracking is fixed. Syndication ends in July. Google Demand Gen drops to ${k$(R.spend['Google Demand Gen'])}.`,
+    `<b>The trade-off.</b> That ${k$(R.spend['Google Demand Gen'])} buys about ${Math.round(g.mql)} MQLs (only ${Math.round(g.icp)} at 1,000+ employees) and costs about ${costSql.toFixed(1)} SQLs against LinkedIn. I'd keep it because the MQL target exists, and report ICP MQLs alongside, because the MQL target measures volume, not pipeline.`,
+    `<b>The risk.</b> How LinkedIn scales decides whether we land at 52 or 56. Before buying more SQLs: fix tracking, gate MQLs at 1,000+ employees, and agree follow-up with Sales. Judge H1 on SQLs; its revenue lands in H2 FY27.`,
+  ].map(s => `<li>${s}</li>`).join('');
+
+  const sqlStatus = lo.sql >= T_SQL ? ['up', 'Achievable'] : t.sql >= T_SQL ? ['flat', 'Achievable in the base case'] : ['down', 'Within reach, not safe'];
+  const mqlStatus = lo.mql >= T_MQL ? ['up', 'Achievable'] : t.mql >= T_MQL ? ['flat', 'Achievable in the base case'] : ['down', 'At risk'];
+  const v = (lab, st, base, a, b, tgt, note) => `<div class="verdict"><div class="k">${lab} target: ${tgt}</div><div class="cv" style="text-align:left"><span class="${st[0]}">${st[1]}</span></div><div class="vv">${Math.round(base)}<span> base case at 25% diminishing returns · ${rng(a, b)} range (50% to 0%)</span></div><p>${note}</p></div>`;
+  document.getElementById('rec-verdicts').innerHTML =
+    v('MQL', mqlStatus, t.mql, lo.mql, hi.mql, T_MQL, `About ${Math.round(t.icp)} are ICP MQLs (1,000+ employees). The ${k$(R.spend['Google Demand Gen'])} Google Demand Gen line is what gets the total over 300.`) +
+    v('SQL', sqlStatus, t.sql, lo.sql, hi.sql, T_SQL, `Needs ${(100 * T_SQL / T_MQL).toFixed(1)}% MQL → SQL; FY26 ran at 14.4%. The top of the range needs LinkedIn to scale at close to its FY26 cost per SQL; Syndication Option B adds about half an SQL.`);
+
+  let rows = '', fr = 0, fd = 0, h2tot = 0;
+  R.base.rows.forEach(x => {
+    const h2 = BASE_RATES[x.ch].h2, d = x.spend - h2, [cls, lbl] = call(x.ch, x.spend); h2tot += h2;
+    if (d < 0) fr -= d; else fd += d;
+    rows += `<tr><td><b>${x.ch}</b><span class="cell-sub">${WHY[x.ch]}</span></td><td class="num">${k$(h2)}</td><td class="num"><b>${k$(x.spend)}</b></td><td class="num ${d > 0 ? 'pos' : d < 0 ? 'neg' : ''}">${dlt(d)}</td><td><span class="call ${cls}">${lbl}</span></td><td class="num">${Math.round(x.mql)}</td><td class="num">${x.sql.toFixed(1)}</td><td class="num">${x.sql > 0.05 ? k$(x.spend / x.sql) : '–'}</td></tr>`;
+  });
+  document.getElementById('rec-plan').innerHTML = '<thead><tr><th>Channel</th><th>H2 FY26</th><th>H1 FY27</th><th>Change</th><th>Call</th><th>MQLs</th><th>SQLs</th><th>Cost per SQL</th></tr></thead><tbody>' + rows +
+    `</tbody><tfoot><tr><td>Total</td><td class="num">${k$(h2tot)}</td><td class="num"><b>${k$(t.spend)}</b></td><td class="num">${dlt(t.spend - h2tot)}</td><td></td><td class="num">${Math.round(t.mql)}</td><td class="num">${t.sql.toFixed(1)}</td><td class="num">${k$(t.spend / t.sql)}</td></tr></tfoot>`;
+  document.getElementById('rec-bridge').innerHTML = `<b>What funds what.</b> Stopping Syndication after July and cutting Google Demand Gen frees ${k$(fr)}. ${k$(fd)} goes to Webinars, Demandbase, LinkedIn and HLTH, and the remaining ${k$(fr - fd)} absorbs the lower budget ($280K against $286.4K spent in H2 FY26).`;
+
+  const alts = [['bal', 'Balanced (recommended)', 'exit', 'Both measures as close as the budget allows; the MQL target costs under one SQL'],
+    ['bal', 'Balanced + Syndication Option B', 'reneg', 'Best result if the vendor accepts about $600 per unique 1,000+ lead'],
+    ['sql', 'SQL-first', 'exit', 'Under one more SQL in the base case, but about 80 MQLs short of 300'],
+    ['mql', 'MQL-first', null, 'Easily clears 300 MQLs, but gives up about 3 SQLs to Google Demand Gen'],
+    ['fy26', 'FY26 H2 mix', null, "Last year's mix; lower SQLs, and keeps paying for Syndication as is"]];
+  document.getElementById('rec-alt').innerHTML = '<thead><tr><th>Option</th><th>SQLs (range · base)</th><th>MQLs (base)</th><th>ICP MQLs</th><th>Read</th></tr></thead><tbody>' +
+    alts.map(([pk, name, syn, read], i) => { const s = snap(pk, syn); return `<tr${i === 0 ? ' class="rec-row"' : ''}><td><b>${name}</b></td><td class="num">${rng(s.lo.t.sql, s.hi.t.sql)} · ${Math.round(s.base.t.sql)}</td><td class="num">${Math.round(s.base.t.mql)}</td><td class="num">${Math.round(s.base.t.icp)}</td><td style="text-align:left;white-space:normal">${read}</td></tr>`; }).join('') + '</tbody>';
+}
+renderRec();
+
+document.getElementById('t-rec').click();
+</script>
+
+</body></html>
